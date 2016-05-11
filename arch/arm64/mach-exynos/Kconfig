@@ -288,6 +288,39 @@ config MACH_UNIVERSAL7580
 	  Machine support for Samsung EXYNOS7580 machine with device tree enabled.
 	  Select this if a fdt blob is available for the EXYNOS7580 SoC based board.
 
+choice
+	prompt "Sub-Device Tree For UNIVERSAL7580"
+
+config MACH_UNIVERSAL7580_J7
+	bool "SAMSUNG UNIVERSAL7580 Device J7"
+	depends on MACH_UNIVERSAL7580
+	default n
+	help
+	  To specify some part for J7.
+
+config MACH_UNIVERSAL7580_S5neo
+	bool "SAMSUNG UNIVERSAL7580 Device S5neo"
+	depends on MACH_UNIVERSAL7580
+	default n
+	help
+	  To specify some part for S5neo.
+
+config MACH_UNIVERSAL7580_A5X
+	bool "SAMSUNG UNIVERSAL7580 Device A5 [2016]"
+	depends on MACH_UNIVERSAL7580
+	default n
+	help
+	  To specify some part for A5 [2016].
+
+config MACH_UNIVERSAL7580_A7X
+	bool "SAMSUNG UNIVERSAL7580 Device A7 [2016]"
+	depends on MACH_UNIVERSAL7580
+	default n
+	help
+	  To specify some part for A7 [2016].
+
+endchoice
+
 config SEC_FACTORY
 	bool "SAMSUNG Factory build option"
 	default n

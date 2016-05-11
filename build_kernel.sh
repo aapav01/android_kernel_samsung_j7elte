@@ -11,4 +11,4 @@ cp -vf init/vmm.elf output/init/vmm.elf
 
 make -C $(pwd) O=output -j10
 
-
+./tools/dtbtool -s 2048 -o output/dt.img -p scripts/dtc/ output/arch/arm64/boot/dts/
