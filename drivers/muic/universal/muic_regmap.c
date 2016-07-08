@@ -46,7 +46,7 @@
 #include "muic_regmap.h"
 
 struct vendor_regmap {
-	char *name; 
+	char *name;
 	void (*func)(struct regmap_desc **);
 };
 
@@ -164,11 +164,16 @@ int regmap_com_to(struct regmap_desc *pdesc, int port)
 	struct regmap_ops *pops = pdesc->regmapops;
 	int uattr, ret;
 
-	pops->ioctl(pdesc, GET_COM_VAL, &port, &uattr);
-	uattr |= _ATTR_OVERWRITE_M;
-	ret = regmap_write_value(pdesc, uattr, port);
+	ret = pops->ioctl(pdesc, GET_COM_VAL, &port, &uattr);
+	if (ret < 0) {
+		pr_info("[muic] %s autoconfig mode\n", __func__);
+		ret = 0;
+	} else {
+		uattr |= _ATTR_OVERWRITE_M;
+		ret = regmap_write_value(pdesc, uattr, port);
 
-	_REGMAP_TRACE(pdesc, 'w', ret, uattr, port);
+		_REGMAP_TRACE(pdesc, 'w', ret, uattr, port);
+	}
 
 	return ret;
 }
@@ -265,8 +270,16 @@ static int muic_update_regmapdata(struct regmap_desc *pdesc, int size)
 	pr_info("%s REG_END:%d size:%d\n", __func__, pdesc->size, size);
 
 	for (i = 0; i < pdesc->size; i++, preg++) {
-		if (!preg->name)
+		if (!preg->name
+#ifdef CONFIG_MUIC_UNIVERSAL_SM5705
+				|| !strcmp(preg->name,"INT1") //Do not read int reg because of AFC_ATTACH int.
+				|| !strcmp(preg->name,"INT2")
+				|| !strcmp(preg->name,"INT3_AFC")
+#endif
+				) {
+			pr_info("pass init register : %s\n", preg->name);
 			continue;
+		}
 
 		ret = muic_i2c_read_byte(pmuic->i2c, i);
 		if (ret < 0)
@@ -315,8 +328,16 @@ static void muic_show_regmap(struct regmap_desc *pdesc)
 	muic_show_regmapdata(pdesc, pdesc->regmap);
 }
 
+#if defined(CONFIG_MUIC_UNIVERSAL_SM5504)
+extern void muic_register_sm5504_regmap_desc(struct regmap_desc **pdesc);
+#endif
+
 #if defined(CONFIG_MUIC_UNIVERSAL_SM5703)
 extern void muic_register_sm5703_regmap_desc(struct regmap_desc **pdesc);
+#endif
+
+#if defined(CONFIG_MUIC_UNIVERSAL_SM5705)
+extern void muic_register_sm5705_regmap_desc(struct regmap_desc **pdesc);
 #endif
 
 #if defined(CONFIG_MUIC_UNIVERSAL_S2MM001)
@@ -328,16 +349,21 @@ extern void muic_register_max77849_regmap_desc(struct regmap_desc **pdesc);
 #endif
 
 static struct vendor_regmap vendor_regmap_tbl[] = {
-#if defined(CONFIG_MUIC_UNIVERSAL_SM5703)	
- 	{"sm,sm5703", muic_register_sm5703_regmap_desc},
+#if defined(CONFIG_MUIC_UNIVERSAL_SM5504)
+	{"sm,sm5504", muic_register_sm5504_regmap_desc},
 #endif
-
-#if defined(CONFIG_MUIC_UNIVERSAL_S2MM001)	 	
+#if defined(CONFIG_MUIC_UNIVERSAL_SM5703)
+	{"sm,sm5703", muic_register_sm5703_regmap_desc},
+#endif
+#if defined(CONFIG_MUIC_UNIVERSAL_SM5705)
+	{"sm,sm5705", muic_register_sm5705_regmap_desc},
+#endif
+#if defined(CONFIG_MUIC_UNIVERSAL_S2MM001)
 	{"lsi,s2mm001", muic_register_s2mm001_regmap_desc},
 #endif
 #if defined(CONFIG_MUIC_UNIVERSAL_MAX77849)
 	{"max,max77849", muic_register_max77849_regmap_desc},
-#endif	
+#endif
 	{"", NULL},
 };
 void muic_register_regmap(struct regmap_desc **pdesc, void *pdata)

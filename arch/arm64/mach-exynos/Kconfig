@@ -91,8 +91,18 @@ config EXYNOS_ASV_MARGIN_TEST
 	default n
 	depends on EXYNOS_ASV
 
+config SKIP_HW_BREAKPOINT
+	bool "support skip hw breakpoint"
+	default n
+	help
+	  Support early param for T32 onchip breakpoint
+
 config CAL_SYS_PWRDOWN
 	bool "Enable CAL for system level power down"
+
+config EXYNOS7580_QUAD
+	bool "Exynos7580 Quad core"
+	default n
 
 config EXYNOS_ATAGS
 	def_bool "ATAGS based boot for EXYNOS (deprecated)"
@@ -131,6 +141,10 @@ config EXYNOS5_SETUP_MIPIPHY
 	default y
 	help
 	  Compile in common setup code for MIPI-CSIS devices
+
+config SAMSUNG_PRODUCT_SHIP
+	bool "set up for product shipping"
+	default n
 
 if EXYNOS_ATAGS
 
@@ -342,4 +356,3 @@ config TIMA_TEST_INFRA
 	default n
 	help
 	  Kernel bits of the TIMA test infrastructure
-

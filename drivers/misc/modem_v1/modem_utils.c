@@ -39,6 +39,7 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/wakelock.h>
+#include <linux/exynos-ss.h>
 
 #include "modem_prj.h"
 #include "modem_utils.h"
@@ -1018,8 +1019,7 @@ int mif_request_irq(struct modem_irq *irq, irq_handler_t isr, void *data)
 {
 	int ret;
 
-	ret = request_threaded_irq(irq->num, NULL, isr, irq->flags, 
-			irq->name, data);
+	ret = request_irq(irq->num, isr, irq->flags, irq->name, data);
 	if (ret) {
 		mif_err("%s: ERR! request_irq fail (%d)\n", irq->name, ret);
 		return ret;
@@ -1167,4 +1167,10 @@ void __ref modemctl_notify_event(enum modemctl_event evt)
 {
 	raw_notifier_call_chain(&cp_crash_notifier, evt, NULL);
 }
+
+void mif_set_snapshot(bool enable)
+{
+	exynos_ss_set_enable("log_kevents", enable);
+}
+
 

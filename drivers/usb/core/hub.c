@@ -33,10 +33,6 @@
 
 #include "hub.h"
 
-#ifdef CONFIG_USB_HOST_NOTIFY
-#include "sec-dock.h"
-#endif
-
 /* if we are in debug mode, always announce new devices */
 #ifdef DEBUG
 #ifndef CONFIG_USB_ANNOUNCE_NEW_DEVICES
@@ -1722,6 +1718,7 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	 * where the controller driver doesn't have bus_suspend and
 	 * bus_resume methods.
 	 */
+#ifndef CONFIG_USB_OTG_LAGO
 	if (hdev->parent) {		/* normal device */
 		usb_enable_autosuspend(hdev);
 	} else {			/* root hub */
@@ -1730,7 +1727,7 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 		if (drv->bus_suspend && drv->bus_resume)
 			usb_enable_autosuspend(hdev);
 	}
-
+#endif
 	if (hdev->level == MAX_TOPO_LEVEL) {
 		dev_err(&intf->dev,
 			"Unsupported bus topology: hub nested too deep\n");
@@ -2091,9 +2088,6 @@ void usb_disconnect(struct usb_device **pdev)
 	dev_info(&udev->dev, "USB disconnect, device number %d\n",
 			udev->devnum);
 
-#ifdef CONFIG_USB_HOST_NOTIFY
-	call_battery_notify(udev, 0);
-#endif
 	usb_lock_device(udev);
 
 	/* Free up all the children before we remove this device */
@@ -2390,9 +2384,7 @@ int usb_new_device(struct usb_device *udev)
 	if (udev->manufacturer)
 		add_device_randomness(udev->manufacturer,
 				      strlen(udev->manufacturer));
-#ifdef CONFIG_USB_HOST_NOTIFY
-	call_battery_notify(udev, 1);
-#endif
+
 	device_enable_async_suspend(&udev->dev);
 
 	/*

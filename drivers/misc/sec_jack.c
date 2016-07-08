@@ -61,6 +61,9 @@ struct sec_jack_info {
 	unsigned int cur_jack_type;
 };
 
+/* define call back function for buuton notifcation */
+static sec_jack_button_notify_cb	button_notify_cb;
+
 /* with some modifications like moving all the gpio structs inside
  * the platform data and getting the name for the switch and
  * gpio_event from the platform data, the driver could support more than
@@ -109,6 +112,15 @@ static struct gpio_event_platform_data sec_jack_input_data = {
 
 struct sec_jack_control_data jack_controls;
 EXPORT_SYMBOL_GPL(jack_controls);
+
+int sec_jack_register_button_notify_cb(sec_jack_button_notify_cb func)
+{
+	if (func == NULL)
+		return -1;
+	button_notify_cb = func;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(sec_jack_register_button_notify_cb);
 
 static void sec_jack_gpio_init(struct sec_jack_platform_data *pdata)
 {
@@ -469,6 +481,8 @@ void sec_jack_buttons_work(struct work_struct *work)
 		switch_set_state(&switch_sendend, 0);
 		dev_info(&hi->client->dev, "key %d is released\n",
 			hi->pressed_code);
+		if (button_notify_cb)
+			button_notify_cb(hi->pressed_code, 0);
 		return;
 	}
 
@@ -489,6 +503,8 @@ void sec_jack_buttons_work(struct work_struct *work)
 			switch_set_state(&switch_sendend, 1);
 			dev_info(&hi->client->dev, "adc = %d, key %d is pressed\n",
 				adc, btn_zones[i].code);
+			if (button_notify_cb)
+				button_notify_cb(btn_zones[i].code, true);
 			return;
 		}
 

@@ -351,6 +351,7 @@ int decon_set_par(struct fb_info *info)
 
 	win_regs = &decon->win_regs;
 	memset(win_regs, 0, sizeof(struct decon_regs_data));
+	decon_warn("setting framebuffer parameters\n");
 
 	if (decon->state == DECON_STATE_OFF)
 		return 0;
@@ -545,7 +546,7 @@ int decon_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	struct decon_device *decon = win->decon;
 	unsigned int start_boff, end_boff;
 
-	if (decon->state == DECON_STATE_OFF || decon->ignore_pan_display == true)
+	if (decon->state == DECON_STATE_OFF)
 		return ret;
 
 	decon_lpd_block_exit(decon);
@@ -588,9 +589,14 @@ int decon_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	decon_reg_activate_window(DECON_INT, win->index);
 	decon_activate_window_dma(decon, win->index);
 
-	if (decon->pdata->trig_mode == DECON_HW_TRIG)
+	if (decon->pdata->trig_mode == DECON_HW_TRIG) {
 		decon_reg_set_trigger(DECON_INT, decon->pdata->dsi_mode,
 			decon->pdata->trig_mode, DECON_TRIG_ENABLE);
+#ifdef CONFIG_DECON_MIPI_DSI_PKTGO
+			v4l2_subdev_call(decon->output_sd, core, ioctl, DSIM_IOC_PKT_GO_ENABLE, NULL); /* Don't care failure or success */
+#endif
+
+	}
 
 	ret = decon_wait_for_vsync(decon, VSYNC_TIMEOUT_MSEC);
 	if (ret) {
@@ -727,7 +733,7 @@ irqreturn_t decon_fb_isr_for_eint(int irq, void *dev_id)
 
 #ifdef CONFIG_DECON_MIPI_DSI_PKTGO
 	if ((decon->state == DECON_STATE_ON) || (decon->state == DECON_STATE_INIT)) {
-		if (is_any_pending_frames(decon)) {
+		if (is_any_pending_frames(decon) || decon->trigger_enable ) {
 			decon->frame_idle = 0;
 			if (v4l2_subdev_call(decon->output_sd, core, ioctl, DSIM_IOC_PKT_GO_READY, NULL))
 				decon_err("Failed to call DSIM packet go ready!\n");

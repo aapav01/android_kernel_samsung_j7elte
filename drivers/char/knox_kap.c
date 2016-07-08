@@ -156,19 +156,21 @@ long knox_kap_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	/* 
 	 * Switch according to the ioctl called 
 	 */
-	printk(KERN_ERR " Enter ther ioctl [ cmd : %d / arg : %ld / f: %s ]\n"
-			, cmd, arg, __FUNCTION__);
 	switch (cmd) {
 		case 0:
 			turn_off_kap();
 			break;
 		case 1:
+#ifndef CONFIG_SOC_EXYNOS7580
+			turn_on_kap();
+#else
 			if(arg)
-			{
+			{   
 				turn_off_kap();
 			} else {
 				turn_on_kap();
-			}
+			} 
+#endif
 			break;
 		default:
 			printk(KERN_ERR " %s -> Invalid kap mode operations\n", __FUNCTION__);

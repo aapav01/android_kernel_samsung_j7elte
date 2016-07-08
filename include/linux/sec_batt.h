@@ -15,7 +15,7 @@
 #ifndef __SEC_BATT_H
 #define __SEC_BATT_H
 
-#if defined(CONFIG_BATTERY_SAMSUNG)
+#if defined(CONFIG_BATTERY_SAMSUNG) || defined(CONFIG_BATTERY_SMART)
 #include <linux/battery/sec_charging_common.h>
 
 extern sec_battery_platform_data_t sec_battery_pdata;

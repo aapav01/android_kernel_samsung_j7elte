@@ -85,20 +85,14 @@ struct dsim_resources {
 };
 
 struct panel_private {
-
 	struct backlight_device *bd;
 	unsigned char id[3];
 	unsigned char code[5];
-#ifdef CONFIG_PANEL_S6D7AA0X62_DYNAMIC
-	unsigned char DB[56];
-	unsigned char B2[7];
-	unsigned char D4[18];
 	unsigned char tset[8];
 	unsigned char elvss[4];
-#endif
 	int	temperature;
 	unsigned int coordinate[2];
-	unsigned char date[4];
+	unsigned char date[7];
 	unsigned int lcdConnected;
 	unsigned int state;
 	unsigned int auto_brightness;
@@ -109,6 +103,7 @@ struct panel_private {
 	unsigned int current_vint;
 	unsigned int siop_enable;
 	unsigned char dump_info[2];
+	unsigned int weakness_hbm_comp;
 
 	void *dim_data;
 	void *dim_info;
@@ -119,6 +114,12 @@ struct panel_private {
 	struct mutex lock;
 	struct dsim_panel_ops *ops;
 	unsigned int panel_type;
+
+#ifdef CONFIG_LCD_HMT
+	unsigned int hmt_on;
+#endif
+
+	void *par;
 };
 
 struct dsim_panel_ops {
@@ -127,6 +128,8 @@ struct dsim_panel_ops {
 	int	(*displayon)(struct dsim_device *dsim);
 	int	(*exit)(struct dsim_device *dsim);
 	int	(*init)(struct dsim_device *dsim);
+	int	(*lvds_init)(struct dsim_device *dsim);
+	void (*lvds_pwm_set)(struct dsim_device *dsim);
 };
 
 struct dsim_device {
@@ -167,8 +170,6 @@ struct dsim_device {
 	struct regulator *lcd_vdd;
 	struct regulator *lcd_vdd_2;
 	struct panel_private priv;
-
-	int				rev;
 };
 
 /**
@@ -185,6 +186,7 @@ struct mipi_dsim_lcd_driver {
 	int	(*suspend)(struct dsim_device *dsim);
 	int	(*displayon)(struct dsim_device *dsim);
 	int	(*resume)(struct dsim_device *dsim);
+	int	(*display_lvds_init)(struct dsim_device *dsim);
 };
 
 int dsim_write_data(struct dsim_device *dsim, unsigned int data_id,

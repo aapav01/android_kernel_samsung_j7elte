@@ -21,10 +21,10 @@
 		PIN_SLP(gpz0-2, INPUT, DOWN);	/* BT_PCM_RXD */
 		PIN_SLP(gpz0-3, INPUT, DOWN);	/* BT_PCM_TXD */
 
-		PIN_SLP(gpz1-0, INPUT, DOWN);	/* NC */
-		PIN_SLP(gpz1-1, INPUT, DOWN);	/* NC */
-		PIN_SLP(gpz1-2, INPUT, DOWN);	/* NC */
-		PIN_SLP(gpz1-3, INPUT, DOWN);	/* NC */
+		PIN_SLP(gpz1-0, OUT1, NONE);	/* BT_UART_TXD */
+		PIN_SLP(gpz1-1, INPUT, NONE);	/* BT_UART_RXD */
+		PIN_SLP(gpz1-2, INPUT, NONE);	/* BT_UART_CTS */
+		PIN_SLP(gpz1-3, OUT1, NONE);	/* BT_UART_RTS */
 
 		PIN_SLP(gpz2-0, INPUT, DOWN);	/* 2MIC_PCM_SYNC */
 		PIN_SLP(gpz2-1, INPUT, DOWN);	/* 2MIC_PCM_CLK */
@@ -67,8 +67,8 @@
 	sleep5: sleep-state {
 		PIN_SLP(gpc3-0, INPUT, NONE);	/* NFC_SCL_1P8 */
 		PIN_SLP(gpc3-1, INPUT, NONE);	/* NFC_SDA_1P8 */
-		PIN_SLP(gpc3-2, OUT1, NONE);	/* NFC_EN */
-		PIN_SLP(gpc3-3, INPUT, DOWN);	/* NFC_CLK_REQ */
+		PIN_SLP(gpc3-2, PREV, NONE);	/* NFC_EN */
+		PIN_SLP(gpc3-3, PREV, NONE);	/* NFC_CLK_REQ */
 	};
 };
 
@@ -82,6 +82,7 @@
 		PIN_IN(gpd0-1, NONE, LV1);	/* HW_REV1 */
 		PIN_IN(gpd0-2, NONE, LV1);	/* HW_REV2 */
 		PIN_IN(gpd0-3, NONE, LV1);	/* HW_REV3 */
+		PIN_OUT_SET(gpd0-5, 0, LV1);    /* LDO26_EN */
 	};
 	sleep6: sleep-state {
 		PIN_SLP(gpb0-0, INPUT, DOWN);	/* AP_UART_RXD */
@@ -105,7 +106,7 @@
 		PIN_SLP(gpb2-6, INPUT, DOWN);	/* NC */
 		PIN_SLP(gpb2-7, OUT1, NONE);	/* IRDA_CTL */
 
-		PIN_SLP(gpc1-0, INPUT, DOWN);	/* NC */
+		PIN_SLP(gpc1-0, OUT1, NONE);	/* XBOOTLDO */
 		PIN_SLP(gpc1-1, INPUT, DOWN);	/* VIB_PWM */
 		PIN_SLP(gpc1-2, INPUT, NONE);	/* COVER_ID */
 		PIN_SLP(gpc1-3, INPUT, DOWN);	/* NC */
@@ -128,7 +129,7 @@
 		PIN_SLP(gpd0-2, INPUT, NONE);	/* HW_REV2 */
 		PIN_SLP(gpd0-3, INPUT, NONE);	/* HW_REV3 */
 		PIN_SLP(gpd0-4, PREV, NONE);	/* DS_DET */
-		PIN_SLP(gpd0-5, OUT0, DOWN);	/* LDO26_EN */
+		PIN_SLP(gpd0-5, OUT1, NONE);	/* LDO26_EN */
 		PIN_SLP(gpd0-6, INPUT, DOWN);	/* CAM_SENSOR_CORE_EN */
 		PIN_SLP(gpd0-7, INPUT, DOWN);	/* TE */
 
@@ -142,11 +143,11 @@
 
 		PIN_SLP(gpd2-0, INPUT, NONE);	/* IF_PMIC_SCL_1P8 */
 		PIN_SLP(gpd2-1, INPUT, NONE);	/* IF_PMIC_SDA_1P8 */
-		PIN_SLP(gpd2-2, INPUT, NONE);	/* UART_SEL */
+		PIN_SLP(gpd2-2, PREV, NONE);	/* UART_SEL */
 		PIN_SLP(gpd2-3, PREV, NONE);	/* SUB_MIC_BIAS_EN */
 		PIN_SLP(gpd2-4, INPUT, DOWN);	/* PCD_INT */
 		PIN_SLP(gpd2-6, INPUT, DOWN);	/* GPS_EN */
-		PIN_SLP(gpd2-7, OUT0, NONE);	/* BTP_OCP_EN */
+		PIN_SLP(gpd2-7, PREV, NONE);	/* BTP_OCP_EN */
 
 		PIN_SLP(gpd3-0, INPUT, DOWN);	/* TP4052 */
 		PIN_SLP(gpd3-1, INPUT, DOWN);	/* HRM_1P8_EN */
@@ -154,7 +155,7 @@
 		PIN_SLP(gpd3-3, INPUT, NONE);	/* MUIC_SCL_1P8 */
 		PIN_SLP(gpd3-4, INPUT, NONE);	/* MUIC_SDA_1P8 */
 
-		PIN_SLP(gpe0-0, PREV, NONE);	/* NFC_FIRM */
+		PIN_SLP(gpe0-0, PREV, DOWN);	/* NFC_FIRM */
 		PIN_SLP(gpe0-1, INPUT, DOWN);	/* FLASH_LED_TORCH */
 		PIN_SLP(gpe0-2, INPUT, DOWN);	/* FLASH_LED_STROBE */
 		PIN_SLP(gpe0-3, INPUT, DOWN);	/* VTCAM_RST_N */
@@ -193,7 +194,7 @@
 	sleep7: sleep-state {
 		PIN_SLP(gpc4-0, INPUT, DOWN);	/* TSP_SDA_1P8 */
 		PIN_SLP(gpc4-1, INPUT, DOWN);	/* TSP_SCL_1P8 */
-		PIN_SLP(gpc4-2, INPUT, DOWN);	/* NC */
+		PIN_SLP(gpc4-2, PREV, UP);	/* BT_EN */
 	};
 };
 

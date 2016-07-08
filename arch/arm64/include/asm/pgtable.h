@@ -185,21 +185,17 @@ static inline pte_t pte_mkspecial(pte_t pte)
 	pte_val(pte) |= PTE_SPECIAL;
 	return pte;
 }
-
-#ifdef CONFIG_RKP_DMAP_PROT
+#ifdef CONFIG_TIMA_RKP
 extern  int printk(const char *s, ...);
 extern void panic(const char *fmt, ...);
-#endif /* CONFIG_RKP_DMAP_PROT */
+#endif /* CONFIG_TIMA_RKP */
 static inline void set_pte(pte_t *ptep, pte_t pte)
 {
 #ifdef CONFIG_TIMA_RKP
-#ifdef CONFIG_RKP_DMAP_PROT
-	if (rkp_is_pg_dbl_mapped((u64)ptep)) {
-		printk("\n Trying to double map the page \n");
+	if (rkp_is_pg_dbl_mapped((u64)(pte)) ) {
 		panic("TIMA RKP : Double mapping Detected");
 		return;
 	}
-#endif /* CONFIG_RKP_DMAP_PROT */
 	if (rkp_is_pg_protected((u64)ptep)) {
 		rkp_call(RKP_PTE_SET, (unsigned long)ptep, pte_val(pte), 0, 0, 0);
 	} else {

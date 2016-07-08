@@ -1493,7 +1493,8 @@ static struct page *new_slab(struct kmem_cache *s, gfp_t flags, int node)
 	set_freepointer(s, last, NULL);
 #ifdef CONFIG_RKP_DMAP_PROT
 	if(rkp_cred_enable && rkp_started) {
-		rkp_call(RKP_CMDID(0x4a),page_to_phys(page),compound_order(page),1,0,0);
+		rkp_call(RKP_CMDID(0x4a),page_to_phys(page),compound_order(page),
+			1,(unsigned long) __pa(rkp_map_bitmap),0);
 	}
 #endif
 	page->freelist = start;
@@ -1533,7 +1534,8 @@ static void __free_slab(struct kmem_cache *s, struct page *page)
 
 #ifdef CONFIG_RKP_DMAP_PROT
 	if(rkp_cred_enable && rkp_started) {
-		rkp_call(RKP_CMDID(0x4a),page_to_phys(page),compound_order(page),0,0,0);
+		rkp_call(RKP_CMDID(0x4a),page_to_phys(page),compound_order(page),
+			0,(unsigned long)__pa(rkp_map_bitmap),0);
 	}
 #endif
 

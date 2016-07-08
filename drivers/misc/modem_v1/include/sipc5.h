@@ -208,6 +208,12 @@ static inline bool sipc5_ipc_ch(u8 ch)
 		? true : false;
 }
 
+static inline bool sipc5_cplog_ch(u8 ch)
+{
+	return (ch == SIPC_CH_ID_CPLOG1 || ch == SIPC_CH_ID_CPLOG2)
+		? true : false;
+}
+
 struct sipc5_frame_data {
 	/* Frame length calculated from the length fields */
 	unsigned int len;

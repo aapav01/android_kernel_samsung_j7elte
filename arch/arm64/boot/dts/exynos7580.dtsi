@@ -351,6 +351,7 @@
 
 	bus_int {
 		compatible = "samsung,exynos7-devfreq-int";
+		reg = <0x0 0x17000010 0x0 0x0>;
 
 		bus_type_int    = <0>;
 		downdifferential= <20>;
@@ -365,6 +366,7 @@
 
 	bus_mif {
 		compatible = "samsung,exynos7-devfreq-mif";
+		reg = <0x0 0x17000020 0x0 0x0>;
 
 		bus_type_mif    = <1>;
 		downthreshold   = <60>;
@@ -382,6 +384,7 @@
 
 	bus_isp {
 		compatible = "samsung,exynos7-devfreq-isp";
+		reg = <0x0 0x17000030 0x0 0x0>;
 
 		pm_qos_class    = <13>;
 		upthreshold     = <95>;
@@ -501,7 +504,6 @@
 		pinctrl-0 = <&uart2_bus>;
 		clocks = <&clock 107>, <&clock 108>, <&clock 102>;
 		clock-names = "gate_pclk2", "gate_uart2", "sclk_uart2";
-		status = "disabled";
 	};
 
 	serial_3: uart@11060000 {
@@ -637,7 +639,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2c_nfc_bus>;
+		pinctrl-0 = <&i2c7_bus>;
 		clocks = <&clock 131>, <&clock 131>;
 		clock-names = "rate_i2c", "gate_i2c";
 		status = "disabled";
@@ -681,8 +683,6 @@
 		clocks = <&clock 120>, <&clock 120>;
 		clock-names = "rate_hsi2c", "gate_hsi2c";
 		samsung,scl-clk-stretching;
-		gpio_sda = <&gpc2 0 0x1>;
-		gpio_scl = <&gpc2 1 0x1>;
 		status = "disabled";
 	};
 
@@ -758,37 +758,6 @@
 		status = "okay";
 	};
 
-	sec_thermistor@0 {
-		compatible = "samsung,sec-ap-thermistor";
-		status = "okay";
-
-		adc_array = <287 296 306 316 326 335 345 355 365 374
-				          384 409 434 459 484 509 515 521 527 533
-					  539 555 572 588 605 627 649 672 694 719
-					  745 766 788 806 824 874 915 956 973 990
-					  1015 1050 1084 1121 1155 1192 1235 1271 1308 1353
-					  1399 1435 1471 1507 1543 1579 1627 1676 1724 1773
-					  1822 1861 1900 1939 1978 2017 2056 2095 2134 2173
-					  2212 2242 2275 2308 2341 2374 2419 2463 2508 2552
-					  2597 2629 2661 2694 2726 2758 2790 2823 2855 2883
-					  2911 2949 2975 3001 3027 3054 3080 3105 3130 3155
-					  3180 3196 3213 3230 3246 3263 3271 3280 3288 3297 3305>;
-		temp_array = <900 890 880 870 860 850 840 830 820 810
-					   800 790 780 770 760 750 740 730 720 710
-					   700 690 680 670 660 650 640 630 620 610
-					   600 590 580 570 560 550 540 530 520 510
-					   500 490 480 470 460 450 440 430 420 410
-					   400 390 380 370 360 350 340 330 320 310
-					   300 290 280 270 260 250 240 230 220 210
-					   200 190 180 170 160 150 140 130 120 110
-					   100 90 80 70 60 50 40 30 20 10
-					   0 (-10) (-20) (-30) (-40) (-50) (-60) (-70) (-80) (-90)
-					   (-100) (-110) (-120) (-130) (-140) (-150) (-160) (-170) (-180) (-190) (-200)>;
-		io-channels = <&exynos_adc 0>;
-		io-channel-names = "adc-ap-temp";
-		io-channel-ranges;
-	};
-
 	dwmmc_1: dwmmc1@13550000 {
 		compatible = "samsung,exynos7580-dw-mshc";
 		reg = <0x0 0x13550000 0x0 0x2000>;
@@ -820,14 +789,14 @@
 		status = "disabled";
 	};
 
-	watchdog@101C0000 {
+	watchdog@101B0000 {
 		compatible = "samsung,s3c2410-wdt";
-		reg = <0x0 0x101C0000 0x0 0x100>;
+		reg = <0x0 0x101B0000 0x0 0x100>;
 		interrupts = <0 100 0>;
 		clocks = <&clock 1030>, <&clock 1030>;
 		clock-names = "rate_watchdog", "gate_watchdog";
 		timeout-sec = <30>;
-		pmu_wdt_reset_type = <0>;
+		pmu_wdt_reset_type = <1>;
 	};
 
 	usb@13580000 {
@@ -917,6 +886,7 @@
 			#dma-cells = <1>;
 			#dma-channels = <4>;
 			#dma-requests = <32>;
+			#dma-secure-mode = <1>;
 		};
 
 		adma: adma@11020000 {
@@ -1684,18 +1654,27 @@
 		ip_ver = <12>;
 		clock_rate = <266000000>;
 		min_rate = <100000>;
-		num_qos_steps = <3>;
+		num_qos_steps = <4>;
 		mfc_qos_table {
-			mfc_qos_variant_0 {
+			mfc_qos_variant_0 {		/* Enc table */
+				thrd_mb = <0>;
+				freq_mfc = <0>;
+				freq_int = <200000>;
+				freq_mif = <559000>;
+				freq_cpu = <0>;
+				freq_kfc = <0>;
+				has_enc_table = <0>;
+			};
+			mfc_qos_variant_1 {
 				thrd_mb = <0>;
 				freq_mfc = <0>;
 				freq_int = <100000>;
 				freq_mif = <416000>;
 				freq_cpu = <0>;
 				freq_kfc = <0>;
-				has_enc_table = <0>;
+				has_enc_table = <1>;
 			};
-			mfc_qos_variant_1 {		/* Enc table */
+			mfc_qos_variant_2 {		/* Enc table */
 				thrd_mb = <108000>;
 				freq_mfc = <0>;
 				freq_int = <200000>;
@@ -1704,7 +1683,7 @@
 				freq_kfc = <0>;
 				has_enc_table = <0>;
 			};
-			mfc_qos_variant_2 {
+			mfc_qos_variant_3 {
 				thrd_mb = <108000>;
 				freq_mfc = <0>;
 				freq_int = <160000>;

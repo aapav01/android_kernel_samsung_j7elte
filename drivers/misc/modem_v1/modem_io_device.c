@@ -165,17 +165,19 @@ static int queue_skb_to_iod(struct sk_buff *skb, struct io_device *iod)
 {
 	struct sk_buff_head *rxq = &iod->sk_rx_q;
 	int len = skb->len;
+	unsigned int max_qlen = sipc5_cplog_ch(iod->id) ? MAX_DM_RXQ_LEN :
+		MAX_IOD_RXQ_LEN;
 
 	if (iod->attrs & IODEV_ATTR(ATTR_NO_CHECK_MAXQ))
 		goto enqueue;
 
-	if (rxq->qlen > MAX_IOD_RXQ_LEN) {
+	if (rxq->qlen > max_qlen) {
 		static DEFINE_RATELIMIT_STATE(_rs, (10 * HZ), 3);
 
 		if (__ratelimit(&_rs))
 			mif_err("%s: %s may be dead (rxq->qlen %d > %d)\n",
 			iod->name, iod->app ? iod->app : "corresponding",
-			rxq->qlen, MAX_IOD_RXQ_LEN);
+			rxq->qlen, max_qlen);
 
 		dev_kfree_skb_any(skb);
 		goto exit;
@@ -1427,7 +1429,6 @@ int sipc5_init_io_device(struct io_device *iod)
 
 		iod->miscdev.minor = MISC_DYNAMIC_MINOR;
 		iod->miscdev.name = iod->name;
-		iod->miscdev.fops = &misc_io_fops;
 
 		ret = misc_register(&iod->miscdev);
 		if (ret)

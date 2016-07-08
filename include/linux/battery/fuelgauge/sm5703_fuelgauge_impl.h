@@ -32,7 +32,6 @@
 #define SM5703_REG_IOCV_MAN                  0x2E
 #define SM5703_REG_END_V_IDX                 0x2F
 
-
 #define SM5703_REG_V_ALARM                   0x0C
 #define SM5703_REG_T_ALARM                   0x0D
 #define SM5703_REG_SOC_ALARM                 0x0E
@@ -84,14 +83,14 @@
 #define SM5703_REG_IOCV_B_S_MIN		0x40
 #define SM5703_REG_IOCV_B_S_MAX		0x43
 
-#define SM5703_REG_MISC     		0x90
+#define SM5703_REG_MISC				0x90
 
 #define SM5703_FG_PARAM_UNLOCK_CODE     0x3700
 #define SM5703_FG_PARAM_LOCK_CODE     0x0000
 #define SM5703_FG_TABLE_LEN    0xF//real table length -1
 
 
-#define SW_RESET_CODE     	  	0x0008
+#define SW_RESET_CODE       0x0008
 #define RS_MAN_CNTL         0x0800
 
 // control register value

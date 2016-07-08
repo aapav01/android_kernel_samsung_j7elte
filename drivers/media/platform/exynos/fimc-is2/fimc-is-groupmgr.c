@@ -46,6 +46,13 @@
 #include "fimc-is-hw.h"
 #include "fimc-is-api-fd.h"
 
+#if defined(CONFIG_LEDS_SM5705)
+#include <linux/leds/leds-sm5705.h>
+#endif
+#if defined(CONFIG_LEDS_S2MU005_FLASH) && defined(CONFIG_LEDS_SUPPORT_FRONT_FLASH)
+#include <linux/leds-s2mu005.h>
+#endif
+
 /* sysfs variable for debug */
 extern struct fimc_is_sysfs_debug sysfs_debug;
 
@@ -573,7 +580,9 @@ extern int sm5703_led_mode_ctrl(int state);
 static void fimc_is_group_set_torch(struct fimc_is_group *group,
 	struct fimc_is_frame *ldr_frame)
 {
-#ifdef CONFIG_SKIP_TORCH_SET_FRONT
+#if defined(CONFIG_SKIP_TORCH_SET_FRONT) \
+	|| (defined(CONFIG_LEDS_S2MU005_FLASH) && defined(CONFIG_LEDS_SUPPORT_FRONT_FLASH))
+
 	int ret = 0;
 	struct fimc_is_device_ischain *device;
 	struct fimc_is_device_sensor *sensor;
@@ -588,7 +597,8 @@ static void fimc_is_group_set_torch(struct fimc_is_group *group,
 	if (ret) {
 		err("fimc_is_sensor_g_module is fail(%d)", ret);
 	}
-
+#endif
+#if defined(CONFIG_SKIP_TORCH_SET_FRONT)
 	if (module->position == SENSOR_POSITION_FRONT) {
 		return;
 	}
@@ -616,6 +626,12 @@ static void fimc_is_group_set_torch(struct fimc_is_group *group,
 				sm5703_led_mode_ctrl(3);
 				flash_control_ready = true;
 			}
+#elif defined(CONFIG_LEDS_SM5705)
+			sm5705_fled_torch_on(SM5705_FLED_0);
+#endif
+#if defined(CONFIG_LEDS_S2MU005_FLASH) && defined(CONFIG_LEDS_SUPPORT_FRONT_FLASH)
+			if (module->position == SENSOR_POSITION_FRONT)
+				s2mu005_led_select_ctrl(S2MU005_FLED_CH2);
 #endif
 			break;
 		case AA_FLASHMODE_START: /*Pre flash mode*/
@@ -629,11 +645,15 @@ static void fimc_is_group_set_torch(struct fimc_is_group *group,
 				sm5703_led_mode_ctrl(3);
 				flash_control_ready = true;
 			}
+#elif defined(CONFIG_LEDS_SM5705)
+			sm5705_fled_torch_on(SM5705_FLED_0);
 #endif
 			break;
 		case AA_FLASHMODE_CAPTURE: /*Main flash mode*/
 #if defined(CONFIG_FLED_SM5703)
 			sm5703_led_mode_ctrl(2);
+#elif defined(CONFIG_LEDS_SM5705)
+			sm5705_fled_flash_on(SM5705_FLED_0);
 #endif
 			break;
 		case AA_FLASHMODE_OFF: /*OFF mode*/
@@ -641,6 +661,12 @@ static void fimc_is_group_set_torch(struct fimc_is_group *group,
 			sky81296_torch_ctrl(0);
 #elif defined(CONFIG_FLED_SM5703)
 			sm5703_led_mode_ctrl(0);
+#elif defined(CONFIG_LEDS_SM5705)
+			sm5705_fled_led_off(SM5705_FLED_0);
+#endif
+#if defined(CONFIG_LEDS_S2MU005_FLASH) && defined(CONFIG_LEDS_SUPPORT_FRONT_FLASH)
+			if (module->position == SENSOR_POSITION_FRONT)
+				s2mu005_led_select_ctrl(S2MU005_FLED_OFF);
 #endif
 			break;
 		default:

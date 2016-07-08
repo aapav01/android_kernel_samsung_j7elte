@@ -261,9 +261,9 @@ int mms_flash_fw(struct mms_ts_info *info, const u8 *fw_data,
 
 	//Read firmware file
 	fw_hdr = (struct mms_bin_hdr *)fw_data;
-	img = kzalloc(sizeof(*img) * fw_hdr->section_num, GFP_KERNEL);
+	img = vzalloc(sizeof(*img) * fw_hdr->section_num);
 	if (!img) {
-		tsp_debug_err(true, &client->dev, "Failed to allocate memory\n");
+		tsp_debug_err(true, &client->dev, "Failed to img allocate memory\n");
 		nRet = -ENOMEM;
 		goto err_alloc_img;
 	}
@@ -369,16 +369,16 @@ int mms_flash_fw(struct mms_ts_info *info, const u8 *fw_data,
 	offsetStart = offsetStart * 1024;
 
 	//Load firmware data
-	data = kzalloc(sizeof(u8) * fw_hdr->binary_length, GFP_KERNEL);
+	data = vzalloc(sizeof(u8) * fw_hdr->binary_length);
 	if (!data) {
-		tsp_debug_err(true, &client->dev, "Failed to allocate memory\n");
+		tsp_debug_err(true, &client->dev, "Failed to data allocate memory\n");
 		nRet = -ENOMEM;
 		goto err_alloc_data;
 	}
 	size = fw_hdr->binary_length;
-	cpydata = kzalloc(ISC_PAGE_SIZE, GFP_KERNEL);
+	cpydata = vzalloc(ISC_PAGE_SIZE);
 	if (!cpydata) {
-		tsp_debug_err(true, &client->dev, "Failed to allocate memory\n");
+		tsp_debug_err(true, &client->dev, "Failed to cpydata allocate memory\n");
 		nRet = -ENOMEM;
 		goto err_alloc_cpydata;
 	}
@@ -486,12 +486,12 @@ int mms_flash_fw(struct mms_ts_info *info, const u8 *fw_data,
 ERROR:
 	tsp_debug_err(true, &client->dev, "%s [ERROR]\n", __func__);
 DONE:
-	kfree(cpydata);
+	vfree(cpydata);
 err_alloc_cpydata:
-	kfree(data);
+	vfree(data);
 err_alloc_data:
 EXIT:
-	kfree(img);
+	vfree(img);
 err_alloc_img:
 	return nRet;
 }

@@ -4,7 +4,6 @@
 #include <linux/muic/muic.h>
 #include <linux/muic/muic_notifier.h>
 #include <linux/sec_sysfs.h>
-#include <linux/delay.h>
 
 #define SET_MUIC_NOTIFIER_BLOCK(nb, fn, dev) do {	\
 		(nb)->notifier_call = (fn);		\
@@ -84,8 +83,6 @@ void muic_notifier_attach_attached_dev(muic_attached_dev_t new_dev)
 
 	muic_notifier.cmd = MUIC_NOTIFY_CMD_ATTACH;
 	muic_notifier.attached_dev = new_dev;
-
-	msleep(150);
 
 	/* muic's attached_device attach broadcast */
 	muic_notifier_notify();

@@ -33,6 +33,7 @@
 #endif
 
 #define MFD_DEV_NAME "max77804"
+
 #define MOTOR_LRA			(1<<7)
 #define MOTOR_EN			(1<<6)
 #define EXT_PWM				(0<<5)
@@ -71,6 +72,7 @@ struct max77804_platform_data {
 
 	int num_regulators;
 	struct max77804_regulator_data *regulators;
+	/* haptic motor data */
 	struct max77804_haptic_platform_data *haptic_data;
 #ifdef CONFIG_LEDS_MAX77804
 	/* led (flash/torch) data */

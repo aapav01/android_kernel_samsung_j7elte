@@ -135,6 +135,7 @@
 #define INTR_CPU_MASK_VAL	(LPASS_INTR_DMA | LPASS_INTR_I2S | \
 				 LPASS_INTR_PCM | LPASS_INTR_SB | \
 				 LPASS_INTR_UART | LPASS_INTR_SFR)
+#define INTR_CPU_DMA_VAL	(LPASS_INTR_DMA)
 
 /* Audio subsystem version */
 enum {
@@ -166,6 +167,7 @@ static struct lpass_info {
 	struct clk		*clk_sramc;
 	struct clk		*clk_intr;
 	struct clk		*clk_timer;
+	atomic_t		dma_use_cnt;
 	atomic_t		use_cnt;
 	atomic_t		stream_cnt;
 	bool			display_on;
@@ -285,6 +287,34 @@ void __iomem *lpass_get_mem(void)
 struct iommu_domain *lpass_get_iommu_domain(void)
 {
 	return lpass.domain;
+}
+
+void lpass_set_dma_intr(bool on)
+{
+	u32 cfg = readl(lpass.regs + LPASS_INTR_CPU_MASK);
+
+	if (on)
+		cfg |= INTR_CPU_DMA_VAL;
+	else
+		cfg &= ~(INTR_CPU_DMA_VAL);
+
+	writel(cfg, lpass.regs +
+			LPASS_INTR_CPU_MASK);
+}
+
+void lpass_dma_enable(bool on)
+{
+	spin_lock(&lpass.lock);
+	if (on) {
+		atomic_inc(&lpass.dma_use_cnt);
+		if (atomic_read(&lpass.dma_use_cnt) == 1)
+			lpass_set_dma_intr(true);
+	} else {
+		atomic_dec(&lpass.dma_use_cnt);
+		if (atomic_read(&lpass.dma_use_cnt) == 0)
+			lpass_set_dma_intr(false);
+	}
+	spin_unlock(&lpass.lock);
 }
 
 void ass_reset(int ip, int op)
@@ -1078,6 +1108,7 @@ static int lpass_probe(struct platform_device *pdev)
 		pr_info("Failed to register /proc/driver/lpadd\n");
 
 	spin_lock_init(&lpass.lock);
+	atomic_set(&lpass.dma_use_cnt, 0);
 	atomic_set(&lpass.use_cnt, 0);
 	atomic_set(&lpass.stream_cnt, 0);
 	lpass_init_reg_list();

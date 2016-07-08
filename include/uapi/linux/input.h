@@ -544,7 +544,7 @@ struct input_keymap_entry {
 #define BTN_MODE		0x13c
 #define BTN_THUMBL		0x13d
 #define BTN_THUMBR		0x13e
-#define BTN_GAME		0x13f	/* Add game button for samsung bluetooth keypad */
+#define BTN_GAME		0x13f
 
 #define BTN_DIGI		0x140
 #define BTN_TOOL_PEN		0x140
@@ -666,6 +666,8 @@ struct input_keymap_entry {
 #define KEY_DEL_EOS		0x1c1
 #define KEY_INS_LINE		0x1c2
 #define KEY_DEL_LINE		0x1c3
+#define KEY_SIDE_GESTURE	0x1c6
+#define KEY_BLACK_UI_GESTURE	0x1c7
 
 #define KEY_FN			0x1d0
 #define KEY_FN_ESC		0x1d1
@@ -792,6 +794,16 @@ struct input_keymap_entry {
 #define BTN_TRIGGER_HAPPY39		0x2e6
 #define BTN_TRIGGER_HAPPY40		0x2e7
 
+/* 0x2f1~2f8 is key event for specail event. */
+#define KEY_CP_GRIP	0x2f1	/* grip sensor for CP */
+#define KEY_TSP_NONE_KEY2	0x2f2	/* grip sensor for WIFI */
+#ifdef CONFIG_USB_HMT_SAMSUNG_INPUT
+#define KEY_START_NOTA_CMD		0x2fc
+#define KEY_START_TA_CMD		0x2fd
+#define KEY_ONGOING_TA_CMD		0x2fe
+#define KEY_HMT_CMD_START		KEY_START_NOTA_CMD
+#endif
+
 /* We avoid low common keys in module aliases so they don't get huge. */
 #define KEY_MIN_INTERESTING	KEY_MUTE
 #define KEY_MAX			0x2ff
@@ -863,16 +875,11 @@ struct input_keymap_entry {
 #define ABS_MT_TOOL_X		0x3c	/* Center X tool position */
 #define ABS_MT_TOOL_Y		0x3d	/* Center Y tool position */
 
-/* Below codes are defined by samsung internally.
- * 0x3D valus is duplicated because ABS_MT_TOOL_Y valuse added in kernel 3.10.
- * But below event types are only treated when those event are reported from
- * internal samsung device.
- */
-#define ABS_MT_PALM		0x3e    /* palm touch */
-#define ABS_MT_GRIP	0x3f	/* grip touch */
-
+#define ABS_MT_PALM		0x3e	/* palm touch */
+#define ABS_MT_GRIP		0x3f	/* grip touch */
 
 #define ABS_MAX			0x3f
+
 #define ABS_CNT			(ABS_MAX+1)
 
 /*
@@ -898,6 +905,8 @@ struct input_keymap_entry {
 #define SW_MUTE_DEVICE		0x0e  /* set = device disabled */
 #define SW_GLOVE		0x0f	/* set = glove mode */
 #define SW_FLIP			0x15  /* set = flip cover */
+#define SW_W1			0x1a  /* set = w1 slave */
+#define SW_CERTIFYHALL		0x1b  /* set = certify hall */
 #define SW_MAX			0x20
 #define SW_CNT			(SW_MAX+1)
 

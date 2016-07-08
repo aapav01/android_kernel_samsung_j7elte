@@ -95,6 +95,7 @@ static struct dma_info {
 	struct mutex		mutex;
 	struct snd_soc_dai	*cpu_dai;
 	struct s3c_dma_params	*params;
+	unsigned int		set_params_cnt;
 	bool			params_init;
 	bool			params_done;
 	bool			prepare_done;
@@ -135,10 +136,22 @@ static int eax_dma_is_uhqa(unsigned long dma_bytes)
 	return (dma_bytes > (SOUNDCAMP_HIGH_PERIOD_BYTE * DMA_PERIOD_CNT));
 }
 
+static inline bool eax_mixer_any_buf_running(void)
+{
+	struct buf_info *bi;
+
+	list_for_each_entry(bi, &buf_list, node) {
+		if (bi->prtd && bi->prtd->running)
+			return true;
+	}
+
+	return false;
+}
+
 static void eax_adma_alloc_buf(void)
 {
-#ifdef CONFIG_SND_SAMSUNG_IOMMU
 	size_t size = 128 * 1024;
+#ifdef CONFIG_SND_SAMSUNG_IOMMU
 	struct iommu_domain *domain = lpass_get_iommu_domain();
 
 	di.dma_buf = dma_alloc_coherent(di.cpu_dai->dev,
@@ -146,7 +159,6 @@ static void eax_adma_alloc_buf(void)
 	iommu_map(domain, 0x48000000, di.dma_start, size, 0);
 	di.dma_start = 0x48000000;
 #else
-	size_t size = 480 * DMA_PERIOD_CNT; /* default: 16bit 2ch */
 	di.dma_buf = dma_alloc_coherent(di.cpu_dai->dev,
 				size, &di.dma_start, GFP_KERNEL);
 #endif
@@ -155,15 +167,14 @@ static void eax_adma_alloc_buf(void)
 
 static void eax_adma_free_buf(void)
 {
-#ifdef CONFIG_SND_SAMSUNG_IOMMU
 	size_t size = 128 * 1024;
+#ifdef CONFIG_SND_SAMSUNG_IOMMU
 	struct iommu_domain *domain = lpass_get_iommu_domain();
 
 	dma_free_coherent(di.cpu_dai->dev, size, (void *)di.dma_buf, di.dma_start);
 	iommu_unmap(domain, 0x48000000, size);
 	di.dma_start = 0;
 #else
-	size_t size = 480 * DMA_PERIOD_CNT; /* default: 16bit 2ch */
 	dma_free_coherent(di.cpu_dai->dev, size, (void *)di.dma_buf, di.dma_start);
 #endif
 	memset(di.buf_wr_p, 0, sizeof(unsigned char *) * DMA_PERIOD_CNT);
@@ -219,18 +230,11 @@ int eax_dma_params_register(struct s3c_dma_params *dma)
 
 static void eax_dma_elapsed(int buf_idx)
 {
-	int n;
-
 	di.buf_rd_idx = buf_idx;
 
-	for (n = 0; n < DMA_PERIOD_CNT; n++) {
-		if (--buf_idx < 0)
-			buf_idx += DMA_PERIOD_CNT;
-
-		di.buf_fill[buf_idx] = false;
-		if (buf_idx == di.buf_wr_idx)
-			break;
-	}
+	if (--buf_idx < 0)
+		buf_idx += DMA_PERIOD_CNT;
+	di.buf_fill[buf_idx] = false;
 
 	di.buf_done = true;
 	if (waitqueue_active(&mixer_buf_wq))
@@ -242,8 +246,11 @@ static void eax_adma_buffdone(void *data)
 	dma_addr_t src, dst, pos;
 	int buf_idx;
 
-	if (!di.running)
+	spin_lock(&di.lock);
+	if (!di.running) {
+		spin_unlock(&di.lock);
 		return;
+	}
 
 	di.params->ops->getposition(di.params->ch, &src, &dst);
 	pos = src - di.dma_start;
@@ -256,6 +263,7 @@ static void eax_adma_buffdone(void *data)
 	di.dma_pos = pos;
 
 	eax_dma_elapsed(buf_idx);
+	spin_unlock(&di.lock);
 }
 
 static void eax_adma_hw_params(unsigned long dma_period_bytes)
@@ -309,11 +317,16 @@ out:
 static void eax_adma_hw_free(void)
 {
 	mutex_lock(&di.mutex);
+	pr_info("Entered %s ++\n", __func__);
 
-	if (di.running)
+	if (di.running || eax_mixer_any_buf_running()) {
+		pr_info("EAXADMA: some mixer channel is running, (%d), (%d)\n",
+			di.running, eax_mixer_any_buf_running());
 		goto out;
+	}
 
-	if (di.params_init) {
+	if (di.params_init && (di.set_params_cnt == 1)) {
+		pr_info("EAXADMA: release dma channel : %s\n", di.params->ch_name);
 		di.params_init = false;
 		di.params->ops->flush(di.params->ch);
 		di.params->ops->release(di.params->ch, di.params->client);
@@ -322,6 +335,8 @@ static void eax_adma_hw_free(void)
 	di.params_done = false;
 	di.prepare_done = false;
 out:
+	di.set_params_cnt--;
+	pr_info("Entered %s --\n", __func__);
 	mutex_unlock(&di.mutex);
 }
 
@@ -334,6 +349,12 @@ static void eax_adma_prepare(unsigned long dma_period_bytes)
 
 	if (di.prepare_done)
 		goto out;
+
+	if (!di.params_init || !di.params_done) {
+		pr_err("EAXADMA: hw_params are not set. init = %d, done = %d\n",
+			di.params_init, di.params_done);
+		goto out;
+	}
 
 	di.prepare_done = true;
 
@@ -366,18 +387,21 @@ out:
 
 static void eax_adma_trigger(bool on)
 {
-	spin_lock(&di.lock);
+	unsigned long flags;
+	spin_lock_irqsave(&di.lock, flags);
 
 	if (on) {
 		di.running = on;
+		lpass_dma_enable(true);
 		di.params->ops->trigger(di.params->ch);
 	} else {
 		di.params->ops->stop(di.params->ch);
+		lpass_dma_enable(false);
 		di.prepare_done = false;
 		di.running = on;
 	}
 
-	spin_unlock(&di.lock);
+	spin_unlock_irqrestore(&di.lock, flags);
 }
 
 static inline void eax_dma_xfer(struct runtime_data *prtd,
@@ -386,7 +410,7 @@ static inline void eax_dma_xfer(struct runtime_data *prtd,
 	dma_addr_t dma_pos;
 
 	if (eax_dma_is_uhqa(prtd->dma_bytes)) {
-		if (!prtd->uhqa_dma_mono) {
+		if (!prtd->uhqa_dma_mono || !upcm_l || !upcm_r) {
 			pr_err("%s : UHQA DMA MONO Pointer is NULL\n", __func__);
 			return;
 		}
@@ -400,8 +424,12 @@ static inline void eax_dma_xfer(struct runtime_data *prtd,
 		} else {
 			prtd->dma_pos = dma_pos;
 		}
+
+		if (prtd->running &&
+			((prtd->dma_pos - prtd->dma_start) % prtd->dma_period == 0))
+			snd_pcm_period_elapsed(prtd->substream);
 	} else {
-		if (!prtd->normal_dma_mono) {
+		if (!prtd->normal_dma_mono || !npcm_l || !npcm_r) {
 			pr_err("%s : NORMAL DMA MONO Pointer is NULL\n", __func__);
 			return;
 		}
@@ -415,10 +443,17 @@ static inline void eax_dma_xfer(struct runtime_data *prtd,
 		} else {
 			prtd->dma_pos = dma_pos;
 		}
-	}
 
-	if (prtd->running && (prtd->dma_pos % prtd->dma_period) == 0)
-		snd_pcm_period_elapsed(prtd->substream);
+		if (prtd->dma_period > NMIXBUF_BYTE * 2) {
+			if (prtd->running &&
+				((prtd->dma_pos - prtd->dma_start) % prtd->dma_period == 0))
+				snd_pcm_period_elapsed(prtd->substream);
+		} else {
+			if (prtd->running &&
+				((prtd->dma_pos - prtd->dma_start) % prtd->dma_period == 0))
+				snd_pcm_period_elapsed(prtd->substream);
+		}
+	}
 }
 
 static int eax_dma_hw_params(struct snd_pcm_substream *substream,
@@ -450,6 +485,9 @@ static int eax_dma_hw_params(struct snd_pcm_substream *substream,
 	spin_unlock_irq(&prtd->lock);
 
 	spin_lock_irq(&mi.lock);
+	if (mi.is_uhqa && !eax_dma_is_uhqa(prtd->dma_bytes))
+		return -EINVAL;
+
 	if (eax_dma_is_uhqa(prtd->dma_bytes)) {
 		mi.is_uhqa = true;
 		mi.mixbuf_size = totbytes / DMA_PERIOD_CNT / 8;
@@ -487,6 +525,10 @@ static int eax_dma_prepare(struct snd_pcm_substream *substream)
 	int ret = 0;
 
 	pr_debug("Entered %s\n", __func__);
+
+	mutex_lock(&di.mutex);
+	di.set_params_cnt++;
+	mutex_unlock(&di.mutex);
 
 	prtd->dma_pos = prtd->dma_start;
 	if (eax_dma_is_uhqa(prtd->dma_bytes)) {
@@ -731,24 +773,14 @@ void eax_asoc_platform_unregister(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(eax_asoc_platform_unregister);
 
-static inline bool eax_mixer_any_buf_running(void)
-{
-	struct buf_info *bi;
-
-	list_for_each_entry(bi, &buf_list, node) {
-		if (bi->prtd && bi->prtd->running)
-			return true;
-	}
-
-	return false;
-}
-
 static void eax_mixer_prepare(void)
 {
 	struct buf_info *bi;
-	short nmix_l, nmix_r, npcm_l, npcm_r;
+	short npcm_l, npcm_r;
+	int nmix_l, nmix_r;
 	short *nmix_buf;
-	int umix_l, umix_r, upcm_l, upcm_r;
+	int upcm_l, upcm_r;
+	long umix_l, umix_r;
 	int *umix_buf;
 	int n;
 
@@ -775,9 +807,19 @@ static void eax_mixer_prepare(void)
 					umix_r += upcm_r;
 				}
 			}
+			/* check 24bit(UHQ) overflow */
+			if (umix_l > 0x007fffff)
+				umix_l = 0x007fffff;
+			else if (umix_l < -0x007fffff)
+				umix_l = -0x007fffff;
 
-			*umix_buf++ = umix_l;
-			*umix_buf++ = umix_r;
+			if (umix_r > 0x007fffff)
+				umix_r = 0x007fffff;
+			else if (umix_r < -0x007fffff)
+				umix_r = -0x007fffff;
+
+			*umix_buf++ = (int)umix_l;
+			*umix_buf++ = (int)umix_r;
 		}
 	} else {
 		nmix_buf = mi.nmix_buf;
@@ -797,9 +839,18 @@ static void eax_mixer_prepare(void)
 					nmix_r += npcm_r;
 				}
 			}
+			if (nmix_l > 0x7fff)
+				nmix_l = 0x7fff;
+			else if (nmix_l < -0x7fff)
+				nmix_l = -0x7fff;
 
-			*nmix_buf++ = nmix_l;
-			*nmix_buf++ = nmix_r;
+			if (nmix_r > 0x7fff)
+				nmix_r = 0x7fff;
+			else if (nmix_r < -0x7fff)
+				nmix_r = -0x7fff;
+
+			*nmix_buf++ = (short)nmix_l;
+			*nmix_buf++ = (short)nmix_r;
 		}
 	}
 
@@ -809,6 +860,7 @@ static void eax_mixer_prepare(void)
 
 static void eax_mixer_write(void)
 {
+	unsigned long flags;
 	int ret;
 
 	spin_lock(&mi.lock);
@@ -818,8 +870,13 @@ static void eax_mixer_write(void)
 	}
 	spin_unlock(&mi.lock);
 
-	if (!di.running && di.buf_fill[DMA_START_THRESHOLD])
+	if (!di.running && di.buf_fill[DMA_START_THRESHOLD]) {
+		if (!di.prepare_done) {
+			eax_adma_hw_params(mi.mixbuf_byte);
+			eax_adma_prepare(mi.mixbuf_byte);
+		}
 		eax_adma_trigger(true);
+	}
 
 	if (di.buf_fill[di.buf_wr_idx]) {
 		if (!di.running)
@@ -843,10 +900,12 @@ static void eax_mixer_write(void)
 	mi.buf_fill = false;
 	spin_unlock(&mi.lock);
 
+	spin_lock_irqsave(&di.lock, flags);
 	di.buf_fill[di.buf_wr_idx] = true;
 	di.buf_wr_idx++;
 	if (di.buf_wr_idx == DMA_PERIOD_CNT)
 		di.buf_wr_idx = 0;
+	spin_unlock_irqrestore(&di.lock, flags);
 }
 
 static int eax_mixer_kthread(void *arg)

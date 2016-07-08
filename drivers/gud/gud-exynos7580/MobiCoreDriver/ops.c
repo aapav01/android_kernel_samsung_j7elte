@@ -224,6 +224,7 @@ static void fastcall_work_func(struct work_struct *work)
 		if (desc->depth != 0)
 			enable_irq(MC_INTR_LOCAL_TIMER);
 	}
+
 	if (cpu_swap) {
 		if (fc_generic->as_out.ret == 0) {
 			cpumask_t cpu;

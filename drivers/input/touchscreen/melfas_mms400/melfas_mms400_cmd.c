@@ -885,6 +885,103 @@ out:
 	info->cmd_state = CMD_STATUS_WAITING;
 }
 
+#ifdef GLOVE_MODE
+static void glove_mode(void *device_data)
+{
+	struct mms_ts_info *info = (struct mms_ts_info *)device_data;
+	int length = 0;
+	int enable = info->cmd_param[0];
+	u8 wbuf[4];
+
+	cmd_clear_result(info);
+
+	tsp_debug_info(true, &info->client->dev, "%s %d\n", __func__, enable);
+
+	wbuf[0] = MIP_R0_CTRL;
+	wbuf[1] = MIP_R1_CTRL_GLOVE_MODE;
+	wbuf[2] = enable;
+
+	if ((enable == 0) || (enable == 1)) {
+		if (mms_i2c_write(info, wbuf, 3)) {
+			tsp_debug_err(true, &info->client->dev, "%s [ERROR] mms_i2c_write\n", __func__);
+			goto out;
+		} else
+			tsp_debug_info(true, &info->client->dev, "%s - value[%d]\n", __func__, wbuf[2]);
+	} else {
+		tsp_debug_err(true, &info->client->dev, "%s [ERROR] Unknown value[%d]\n", __func__, enable);
+		goto out;
+	}
+	tsp_debug_dbg(true, &info->client->dev, "%s [DONE] \n", __func__);
+
+	info->cmd_state = CMD_STATUS_OK;
+	length = strlen(info->print_buf);
+	tsp_debug_err(true, &info->client->dev, "%s: length is %d\n", __func__, length);
+
+out:
+	cmd_set_result(info, info->print_buf, length);
+
+	mutex_lock(&info->lock);
+	info->cmd_busy = false;
+	mutex_unlock(&info->lock);
+
+	info->cmd_state = CMD_STATUS_WAITING;
+}
+#endif
+
+#ifdef COVER_MODE
+static void clear_cover_mode(void *device_data)
+{
+	struct mms_ts_info *info = (struct mms_ts_info *)device_data;
+	int length = 0;
+	int enable = info->cmd_param[0];
+	u8 wbuf[4];
+
+	cmd_clear_result(info);
+
+	tsp_debug_info(true, &info->client->dev, "%s %d\n", __func__, enable);
+
+	if (!info->enabled) {
+		tsp_debug_err(true, &info->client->dev,
+			"%s : tsp disabled\n", __func__);
+		goto out;
+	}
+
+	wbuf[0] = MIP_R0_CTRL;
+	wbuf[1] = MIP_R1_CTRL_WINDOW_MODE;
+	wbuf[2] = enable;
+
+	if ((enable >= 0) || (enable <= 3)) {
+		if (mms_i2c_write(info, wbuf, 3)) {
+			tsp_debug_err(true, &info->client->dev, "%s [ERROR] mms_i2c_write\n", __func__);
+			goto out;
+		} else{
+			tsp_debug_info(true, &info->client->dev, "%s - value[%d]\n", __func__, wbuf[2]);
+		}
+	} else {
+		tsp_debug_err(true, &info->client->dev, "%s [ERROR] Unknown value[%d]\n", __func__, enable);
+		goto out;
+	}
+	tsp_debug_dbg(true, &info->client->dev, "%s [DONE] \n", __func__);
+
+	info->cmd_state = CMD_STATUS_OK;
+	length = strlen(info->print_buf);
+	tsp_debug_err(true, &info->client->dev, "%s: length is %d\n", __func__, length);
+
+out:
+	if(enable > 0)
+		info->cover_mode = true;
+	else
+		info->cover_mode = false;
+	cmd_set_result(info, info->print_buf, length);
+
+	mutex_lock(&info->lock);
+	info->cmd_busy = false;
+	mutex_unlock(&info->lock);
+
+	info->cmd_state = CMD_STATUS_WAITING;
+}
+#endif
+
 /**
  * Command : Unknown cmd
  */
@@ -952,6 +1049,12 @@ static struct mms_cmd mms_commands[] = {
 	{MMS_CMD("get_cm_delta_all_data", get_cm_delta_all_data),},
 	{MMS_CMD("get_cm_abs_all_data", get_cm_abs_all_data),},
 	{MMS_CMD("dead_zone_enable", dead_zone_enable),},
+#ifdef GLOVE_MODE
+	{MMS_CMD("glove_mode", glove_mode),},
+#endif
+#ifdef COVER_MODE
+	{MMS_CMD("clear_cover_mode", clear_cover_mode),},
+#endif
 	{MMS_CMD("module_off_slave", cmd_unknown_cmd),},
 	{MMS_CMD("module_on_slave", cmd_unknown_cmd),},
 	{MMS_CMD(NAME_OF_UNKNOWN_CMD, cmd_unknown_cmd),},

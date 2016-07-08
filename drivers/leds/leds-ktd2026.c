@@ -28,6 +28,20 @@
 #endif
 #include <linux/of_gpio.h>
 
+#ifdef CONFIG_LEDS_KTD2026_PANEL
+static int panel_id;
+
+static int get_panel_id(char *str)
+{
+	get_option(&str, &panel_id);
+	panel_id = (panel_id & 0xff0000) >> 16;
+	printk(KERN_DEBUG "led : %s 0x%x\n", __func__, panel_id);
+
+	return panel_id;
+}
+__setup("lcdtype=", get_panel_id);
+#endif
+
 static void ktd2026_set_brightness(struct led_classdev *cdev,
 			enum led_brightness brightness)
 {
@@ -269,6 +283,12 @@ static int ktd2026_init_leds(struct ktd2026_drvdata *ddata)
 	return 0;
 }
 
+static int get_led_max_current(struct ktd2026_drvdata *ddata,
+	enum ktd2026_led_enum led)
+{
+	return ddata->led[led >>1].cdev.max_brightness;
+}
+
 #ifdef SEC_LED_SPECIFIC
 static void ktd2026_start_led_pattern(struct ktd2026_drvdata *ddata,
 	enum ktd2026_pattern mode)
@@ -276,26 +296,24 @@ static void ktd2026_start_led_pattern(struct ktd2026_drvdata *ddata,
 	if (mode > POWERING)
 		return;
 
+	if (mode == LED_OFF) {
+		ktd2026_set_sleep(ddata, 1);
+		return;
+	}
+
 	/* Set all LEDs Off */
 	ktd2026_init_leds(ddata);
-	if (mode == LED_OFF) {
-		ddata->is_led_on = false;
-		return;
-	} else
-		ddata->is_led_on = true;
-
-	/* Set to low power consumption mode */
-	if (ddata->led_lowpower_mode == 1)
-		ddata->led_dynamic_current = LED_LOW_CURRENT;
-	else
-		ddata->led_dynamic_current = LED_DEFAULT_CURRENT;
 
 	switch (mode) {
 	case CHARGING:
+		ddata->led_dynamic_current = ddata->led_lowpower_mode ? LED_LOW_CURRENT :
+			get_led_max_current(ddata, LED_R);
 		ktd2026_leds_on(ddata, LED_R, LED_EN_ON, ddata->led_dynamic_current);
 		break;
 
 	case CHARGING_ERR:
+		ddata->led_dynamic_current = ddata->led_lowpower_mode ? LED_LOW_CURRENT :
+			get_led_max_current(ddata, LED_R);
 		ktd2026_set_timerslot_control(ddata, 1); /* Tslot2 */
 		ktd2026_set_period(ddata, 6);
 		ktd2026_set_pwm_duty(ddata, PWM1, 127);
@@ -305,6 +323,8 @@ static void ktd2026_start_led_pattern(struct ktd2026_drvdata *ddata,
 		break;
 
 	case MISSED_NOTI:
+		ddata->led_dynamic_current = ddata->led_lowpower_mode ? LED_LOW_CURRENT :
+			get_led_max_current(ddata, LED_B);
 		ktd2026_set_timerslot_control(ddata, 1); /* Tslot2 */
 		ktd2026_set_period(ddata, 41);
 		ktd2026_set_pwm_duty(ddata, PWM1, 232);
@@ -314,6 +334,8 @@ static void ktd2026_start_led_pattern(struct ktd2026_drvdata *ddata,
 		break;
 
 	case LOW_BATTERY:
+		ddata->led_dynamic_current = ddata->led_lowpower_mode ? LED_LOW_CURRENT :
+			get_led_max_current(ddata, LED_R);
 		ktd2026_set_timerslot_control(ddata, 1); /* Tslot2 */
 		ktd2026_set_period(ddata, 41);
 		ktd2026_set_pwm_duty(ddata, PWM1, 232);
@@ -323,6 +345,8 @@ static void ktd2026_start_led_pattern(struct ktd2026_drvdata *ddata,
 		break;
 
 	case FULLY_CHARGED:
+		ddata->led_dynamic_current = ddata->led_lowpower_mode ? LED_LOW_CURRENT :
+			get_led_max_current(ddata, LED_G);
 		ktd2026_leds_on(ddata, LED_G, LED_EN_ON, ddata->led_dynamic_current);
 		break;
 
@@ -331,7 +355,11 @@ static void ktd2026_start_led_pattern(struct ktd2026_drvdata *ddata,
 		ktd2026_set_period(ddata, 14);
 		ktd2026_set_pwm_duty(ddata, PWM1, 128);
 		ktd2026_set_trise_tfall(ddata, 7, 7, 0);
+		ddata->led_dynamic_current = ddata->led_lowpower_mode ? LED_LOW_CURRENT :
+			get_led_max_current(ddata, LED_B);
 		ktd2026_leds_on(ddata, LED_B, LED_EN_ON, ddata->led_dynamic_current/2);
+		ddata->led_dynamic_current = ddata->led_lowpower_mode ? LED_LOW_CURRENT :
+			get_led_max_current(ddata, LED_G);
 		ktd2026_leds_on(ddata, LED_G, LED_EN_PWM1, ddata->led_dynamic_current/3);
 		break;
 
@@ -351,14 +379,18 @@ static void ktd2026_set_led_blink(struct ktd2026_drvdata *ddata,
 		return;
 	}
 
-	if (brightness > LED_MAX_CURRENT)
-		brightness = LED_MAX_CURRENT;
+	if (brightness > get_led_max_current(ddata, led))
+		brightness = get_led_max_current(ddata, led);
 
 	if (delay_off_time == LED_OFF) {
 		ktd2026_leds_on(ddata, led, LED_EN_ON, brightness);
 		return;
-	} else
-		ktd2026_leds_on(ddata, led, LED_EN_PWM1, brightness);
+	}
+
+	if (100 < (delay_on_time/delay_off_time)) {
+		ktd2026_leds_on(ddata, led, LED_EN_ON, brightness);
+		return;
+	}
 
 	on_time = (delay_on_time + KTD2026_TIME_UNIT - 1) / KTD2026_TIME_UNIT;
 	off_time = (delay_off_time + KTD2026_TIME_UNIT - 1) / KTD2026_TIME_UNIT;
@@ -366,6 +398,7 @@ static void ktd2026_set_led_blink(struct ktd2026_drvdata *ddata,
 	ktd2026_set_period(ddata, (on_time+off_time) * 4 + 2);
 	ktd2026_set_pwm_duty(ddata, PWM1, on_time*255 / (on_time + off_time));
 	ktd2026_set_trise_tfall(ddata, 0, 0, 0);
+	ktd2026_leds_on(ddata, led, LED_EN_PWM1, brightness);
 	printk(KERN_DEBUG "led : on_time=%d, off_time=%d, period=%d, duty=%d\n" ,
 		on_time, off_time, (on_time+off_time) * 4 + 2,
 		on_time * 255 / (on_time + off_time));
@@ -474,15 +507,12 @@ static ssize_t store_ktd2026_led_blink(struct device *dev,
 	retval = sscanf(buf, "0x%x %d %d", &led_brightness,
 		&delay_on_time, &delay_off_time);
 
-	printk(KERN_DEBUG "led : 0x%X %d %d\n",
-			led_brightness, delay_on_time, delay_off_time);
-
 	if (retval == 0) {
 		printk(KERN_ERR "led : fail to get led_blink value.\n");
 		return count;
 	}
 	/*Reset ktd2026*/
-	ktd2026_start_led_pattern(ddata, LED_OFF);
+	ktd2026_init_leds(ddata);
 
 	/*Set LED blink mode*/
 	led_r_brightness = ((u32)led_brightness & LED_R_MASK) >> LED_R_SHIFT;
@@ -502,31 +532,33 @@ static ssize_t store_ktd2026_led_blink(struct device *dev,
 	return count;
 }
 
-static int get_led_max_current(struct ktd2026_drvdata *ddata,
-	enum ktd2026_led_enum led)
-{
-	return ddata->led[led >>1].cdev.max_brightness;
-}
-
 #define LED_ATTR_STORE_FN(name, led)						\
 static ssize_t store_##name(struct device *dev,					\
 	struct device_attribute *devattr, const char *buf, size_t count)	\
-{														\
-	struct ktd2026_drvdata *ddata = dev_get_drvdata(dev);		\
+{										\
+	struct ktd2026_drvdata *ddata = dev_get_drvdata(dev);			\
 	int brightness = 0, max_current = get_led_max_current(ddata, led);	\
-														\
-	if (sscanf(buf, "%d", &brightness) != 1) {					\
+	ktd2026_init_leds(ddata);						\
+										\
+	if (sscanf(buf, "%d", &brightness) != 1) {				\
 		printk(KERN_ERR "led : fail to get brightness.\n");		\
-		return -EINVAL;									\
-	}													\
-	printk(KERN_DEBUG "led : %d : %d\n", led, brightness);		\
-	if (max_current < brightness)								\
-		brightness = max_current;							\
-	ktd2026_leds_on(ddata, led,							\
+		return -EINVAL;							\
+	}									\
+	printk(KERN_DEBUG "led : %d : %d\n", led, brightness);			\
+	if (max_current < brightness)						\
+		brightness = max_current;					\
+	ktd2026_leds_on(ddata, led,						\
 		brightness ? LED_EN_ON : LED_EN_OFF, brightness);		\
-	return count;											\
-}														\
-static DEVICE_ATTR(name, 0664, NULL, store_##name)
+	return count;								\
+}										\
+static ssize_t show_##name(struct device *dev,					\
+	struct device_attribute *devattr, char *buf)			\
+{									\
+	struct ktd2026_drvdata *ddata = dev_get_drvdata(dev);		\
+	u8 addr = KTD2026_REG_LED1 + (led >> 1);			\
+	return sprintf(buf, "%d\n", ddata->shadow_reg[addr]);		\
+}									\
+static DEVICE_ATTR(name, 0664, show_##name, store_##name)
 #endif
 
 /* Added for led common class */
@@ -741,8 +773,26 @@ static struct ktd2026_led_pdata *
 		if (of_property_read_u8(child_node, "brightness", &led_conf[i].brightness))
 			led_conf[i].brightness = LED_OFF;
 		printk(KERN_DEBUG " %d", led_conf[i].brightness);
+#ifdef CONFIG_LEDS_KTD2026_PANEL
+		if (panel_id == 0x40) {
+			if (of_property_read_u8(child_node, "max_brightness",
+						&led_conf[i].max_brightness))
+				led_conf[i].max_brightness = LED_MAX_CURRENT;
+		}
+		else if (panel_id == 0x41) {
+			if (of_property_read_u8(child_node, "max_brightness2",
+						&led_conf[i].max_brightness))
+				led_conf[i].max_brightness = LED_MAX_CURRENT;
+		}
+		else {
+			if (of_property_read_u8(child_node, "max_brightness3",
+						&led_conf[i].max_brightness))
+				led_conf[i].max_brightness = LED_MAX_CURRENT;
+		}
+#else
 		if (of_property_read_u8(child_node, "max_brightness", &led_conf[i].max_brightness))
 			led_conf[i].max_brightness = LED_MAX_CURRENT;
+#endif
 		printk(KERN_DEBUG " %d", led_conf[i].max_brightness);
 		if (of_property_read_u8(child_node, "flags", &led_conf[i].flags))
 			led_conf[i].flags = 0;
@@ -801,7 +851,6 @@ static int ktd2026_probe(struct i2c_client *client,
 #ifdef CONFIG_SEC_FACTORY
 	ddata->enable = true;
 #endif
-	ddata->is_led_on = false;
 
 	if (pdata->led_en)
 		pdata->led_en(true);
@@ -914,26 +963,6 @@ static struct of_device_id ktd2026_i2c_dt_ids[] = {
 MODULE_DEVICE_TABLE(of, ktd2026_i2c_dt_ids);
 #endif /* CONFIG_OF */
 
-static int ktd2026_i2c_suspend(struct i2c_client *client, pm_message_t mesg)
-{
-	struct ktd2026_drvdata *ddata  = i2c_get_clientdata(client);
-
-	printk(KERN_DEBUG "led : %s [%s]\n",
-		__func__, ddata->is_led_on ? "on" : "off");
-	/* if the led is not on, enter the sleep mode by the gpio */
-	if (!ddata->is_led_on) {
-		gpio_direction_output(of_get_gpio(ddata->client->adapter->dev.of_node, 0), 0);
-		gpio_direction_output(of_get_gpio(ddata->client->adapter->dev.of_node, 1), 0);
-	}
-
-	return 0;
-}
-
-static int ktd2026_i2c_resume(struct i2c_client *client)
-{
-	return 0;
-}
-
 static struct i2c_driver ktd2026_i2c_driver = {
 	.driver = {
 		.owner	= THIS_MODULE,
@@ -942,8 +971,6 @@ static struct i2c_driver ktd2026_i2c_driver = {
 	},
 	.id_table = ktd2026_id,
 	.probe = ktd2026_probe,
-	.suspend = ktd2026_i2c_suspend,
-	.resume = ktd2026_i2c_resume,
 	.remove = __devexit_p(ktd2026_remove),
 	.shutdown = ktd2026_shutdown,
 };

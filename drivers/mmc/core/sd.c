@@ -31,7 +31,6 @@
 #define ST_LOG(fmt,...)
 #endif
 
-
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
 	0,		0,		0,		0

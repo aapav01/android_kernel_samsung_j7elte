@@ -117,7 +117,7 @@ config MUIC_MAX77833
         depends on MFD_MAX77833 && USE_MUIC
         default n
         help
-          If you say yes here you will get support for 
+          If you say yes here you will get support for
           for the MAX77833 MUIC chip.
 
 config HV_MUIC_MAX77833_AFC
@@ -132,7 +132,7 @@ config MUIC_MAX77833_IGNORE_ADCERR_WA
         depends on MUIC_MAX77833
         default n
         help
-          If you say yes here you will get support for the MAX77833 MUIC RESET WA. 
+          If you say yes here you will get support for the MAX77833 MUIC RESET WA.
 
 config MUIC_MAX77833_RESET_WA
         bool "Using MAX77833 MUIC RESET WA"
@@ -164,16 +164,60 @@ config MUIC_SM5703
 	help
 	  If you say yes here you will get support for the SM5703 MUIC chip.
 
+config MUIC_SM5705
+	bool "SM5705 MUIC"
+	depends on USE_MUIC
+	default n
+	help
+	  If you say yes here you will get support for the SM5705 MUIC chip.
+
+config MUIC_S2MU005
+	bool "S2MU005 MUIC"
+	depends on USE_MUIC
+	default n
+	help
+	  If you say yes here you will get support for the S2MU005 MUIC chip.
+	
+config MUIC_SM5705_AFC
+        bool "SM5705 AFC MUIC"
+        depends on MUIC_SM5705
+        default n
+        help
+          If you say yes here you will get support for the SM5705 AFC MUIC.
+
 config MUIC_UNIVERSAL
-	bool "UNIVERSAL MUIC"
+  bool "UNIVERSAL MUIC"
 	depends on USE_MUIC
 	default n
 	help
 	  If you say yes here you will get support for various MUIC chips.
 
 config MUIC_UNIVERSAL_SM5703
-	bool "SM5703 MUIC"
+  bool "SM5703 MUIC"
 	depends on USE_MUIC
 	default n
 	help
 	  If you say yes here you will get support for the SM5703 MUIC chip.
+
+config MUIC_UNIVERSAL_SM5705
+	bool "SM5705 MUIC"
+	depends on USE_MUIC
+	default n
+	help
+	  If you say yes here you will get support for the SM5705 MUIC chip.
+
+config MUIC_UNIVERSAL_SM5705_AFC
+	bool "SM5705 MUIC AFC"
+	depends on USE_MUIC
+	default n
+	help
+	  If you say yes here you will get support for the SM5705 MUIC
+	  AFC feature.
+
+config MUIC_UNIVERSAL_SM5504
+  bool "SM5504 MUIC"
+	depends on USE_MUIC
+	default n
+	help
+	  If you say yes here you will get support for the SM5504 MUIC chip.
+

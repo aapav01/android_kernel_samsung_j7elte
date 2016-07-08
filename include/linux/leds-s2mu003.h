@@ -2,7 +2,6 @@
  * leds-S2MU003.h - Flash-led driver for Samsung S2MU003
  *
  * Copyright (C) 2014 Samsung Electronics
- * XXX <xxx@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -22,7 +21,9 @@
 #define S2MU003_FLASH_TORCH_CURRENT_MAX 0xF
 #define S2MU003_TIMEOUT_MAX 0xF
 
-#define S2MU003_FLASH_IOUT_MASK 0x1F
+#define S2MU003_BOOST_VOUT_FLASH_MASK 0x3F
+
+#define S2MU003_FLASH_IOUT_MASK 0x3F
 #define S2MU003_TORCH_IOUT_MASK 0x0F
 
 #define S2MU003_FLASH_ON_I2C 0xC0
@@ -36,6 +37,8 @@
 
 #define S2MU003_FLASH_TORCH_OFF 0x00
 #define S2MU003_BOOST_FLASH_MODE_MASK 0x04
+
+#define S2MU003_TORCH_BRIGHTNESS(mA) (((mA - 25) /25) & 0x0f)
 
 enum s2mu003_led_id {
 	S2MU003_OFF,
@@ -165,6 +168,10 @@ struct s2mu003_fled_platform_data {
 	struct s2mu003_led leds[S2MU003_LED_MAX];
 	int torch_pin;
 	int flash_pin;
+	bool lvp_enable;
+	struct pinctrl *fled_pinctrl;
+	struct pinctrl_state *gpio_state_active;
+	struct pinctrl_state *gpio_state_suspend;
 };
 
 #endif

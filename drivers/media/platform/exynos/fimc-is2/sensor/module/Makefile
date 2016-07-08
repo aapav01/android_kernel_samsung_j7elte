@@ -23,7 +23,8 @@ fimc-is-module-objs := fimc-is-device-6b2.o \
 		fimc-is-device-sr544.o \
 		fimc-is-device-sr200-soc.o \
 		fimc-is-device-3p3.o \
-		fimc-is-device-ov5670.o
+		fimc-is-device-ov5670.o\
+		fimc-is-device-sr261.o
 
 obj-$(CONFIG_MODULE_ALL_INCLUDE) += fimc-is-module.o
 
@@ -53,6 +54,7 @@ obj-$(CONFIG_CAMERA_SENSOR_SR544_OBJ) += fimc-is-device-sr544.o
 obj-$(CONFIG_CAMERA_SENSOR_SR200_OBJ) += fimc-is-device-sr200-soc.o
 obj-$(CONFIG_CAMERA_SENSOR_3P3_OBJ) += fimc-is-device-3p3.o
 obj-$(CONFIG_CAMERA_SENSOR_OV5670_OBJ) += fimc-is-device-ov5670.o
+obj-$(CONFIG_CAMERA_SENSOR_SR261_OBJ) += fimc-is-device-sr261.o
 
 EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2
 EXTRA_CFLAGS += -Idrivers/media/platform/exynos/fimc-is2/include

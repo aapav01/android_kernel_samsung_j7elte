@@ -112,7 +112,6 @@ struct ktd2026_drvdata {
 	struct mutex mutex;
 	struct ktd2026_led	led[MAX_NUM_LEDS];
 	struct ktd2026_led_pdata *pdata;
-	bool is_led_on;
 #ifdef CONFIG_SEC_FACTORY
 	bool enable;
 #endif

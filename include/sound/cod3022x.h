@@ -6,4 +6,6 @@
 
 int cod3022x_set_externel_jd(struct snd_soc_codec *codec);
 int cod3022x_mic_bias_ev(struct snd_soc_codec *codec,int mic, int event);
+void cod3022x_process_button_ev(int code, int on);
+
 #endif /* __SOUND_COD3022X_H__ */

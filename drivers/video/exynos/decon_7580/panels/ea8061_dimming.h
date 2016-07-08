@@ -72,6 +72,8 @@ enum {
 
 #define MAX_BR_INFO				62
 
+#define HAS_NO_V0_GAMMA
+
 #define dimm_err(fmt, ...)					\
 	do {							\
 		pr_err(pr_fmt(fmt), ##__VA_ARGS__);		\

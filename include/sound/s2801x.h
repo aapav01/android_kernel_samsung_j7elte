@@ -63,6 +63,13 @@ void s2801x_put_sync(void);
  * Returns true if CP audio path is enabled, false otherwise.
  */
 bool is_cp_aud_enabled(void);
+
+/**
+ * is_cp_voice_call(): Checks whether CP call is active
+ *
+ * Returns true if CP voice call is active, false otherwise
+ */
+bool is_cp_voice_call(void);
 #else
 int s2801x_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params,
@@ -87,6 +94,11 @@ void s2801x_put_sync(void)
 }
 
 bool is_cp_aud_enabled(void)
+{
+	return false;
+}
+
+bool is_cp_voice_call()
 {
 	return false;
 }

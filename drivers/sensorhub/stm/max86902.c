@@ -45,7 +45,7 @@
 #define MAX86900C_DEFAULT_CURRENT	0x0F
 
 #define MAX86902_DEFAULT_CURRENT1	0x00 //RED
-#define MAX86902_DEFAULT_CURRENT2	0x60 //IR
+#define MAX86902_DEFAULT_CURRENT2	0xFF //IR
 #define MAX86902_DEFAULT_CURRENT3	0x60 //NONE
 #define MAX86902_DEFAULT_CURRENT4	0x60 //Violet
 
@@ -3923,7 +3923,7 @@ static ssize_t max86900_uv_flush_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	input_report_rel(data->hrm_input_dev, REL_MISC, handle);
+	input_report_rel(data->uv_input_dev, REL_MISC, handle);
 	return size;
 }
 
@@ -4495,6 +4495,7 @@ int max86900_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	data->uv_input_dev->name = MODULE_NAME_UV;
 	input_set_capability(data->uv_input_dev, EV_REL, REL_X);
 	input_set_capability(data->uv_input_dev, EV_REL, REL_Y);
+	input_set_capability(data->uv_input_dev, EV_REL, REL_MISC);
 
 	err = input_register_device(data->uv_input_dev);
 	if (err < 0) {

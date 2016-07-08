@@ -107,6 +107,10 @@ static inline void mark_rodata_ro(void) { }
 extern void tc_init(void);
 #endif
 
+#if defined(CONFIG_USE_HOST_FD_LIBRARY)
+extern void *fd_vaddr;
+#endif
+
 #ifdef CONFIG_KNOX_KAP
 int boot_mode_security;
 EXPORT_SYMBOL(boot_mode_security);
@@ -516,7 +520,11 @@ static void rkp_init(void)
 	init.extra_memory_size = 0x600000;
 	init._srodata = (u64) __start_rodata;
 	init._erodata =(u64) __end_rodata;
+#if defined(CONFIG_USE_HOST_FD_LIBRARY)
+	init.large_memory = (u32) virt_to_phys(fd_vaddr);
+#else
 	init.large_memory = 0;
+#endif
 	rkp_call(RKP_INIT, (u64)&init, 0, 0, 0, 0);
 	rkp_started = 1;
 	return;
@@ -602,6 +610,8 @@ asmlinkage void __init start_kernel(void)
 		vmm_init();
 	else
 		vmm_disable();
+#else
+	vmm_init();
 #endif //CONFIG_KNOX_KAP
 #endif //CONFIG_TIMA_RKP
 	jump_label_init();
@@ -916,6 +926,34 @@ static int run_init_process(const char *init_filename)
 		(const char __user *const __user *)envp_init);
 }
 
+#ifdef CONFIG_DEFERRED_INITCALLS
+extern initcall_t __deferred_initcall_start[], __deferred_initcall_end[];
+
+/* call deferred init routines */
+void __ref do_deferred_initcalls(void)
+{
+	initcall_t *call;
+	static int already_run=0;
+
+	if (already_run) {
+		printk("do_deferred_initcalls() has already run\n");
+		return;
+	}
+
+	already_run=1;
+
+	printk("Running do_deferred_initcalls()\n");
+
+	for(call = __deferred_initcall_start;
+		call < __deferred_initcall_end; call++)
+		do_one_initcall(*call);
+
+	flush_scheduled_work();
+
+	free_initmem();
+}
+#endif
+
 #ifdef CONFIG_SEC_GPIO_DVS
 extern void gpio_dvs_check_initgpio(void);
 #endif
@@ -933,7 +971,9 @@ static int __ref kernel_init(void *unused)
 #endif
 	/* need to finish all async __init code before freeing the memory */
 	async_synchronize_full();
+#ifndef CONFIG_DEFERRED_INITCALLS
 	free_initmem();
+#endif
 	mark_rodata_ro();
 	system_state = SYSTEM_RUNNING;
 	numa_default_policy();

@@ -58,6 +58,9 @@ struct sec_jack_platform_data {
 
 extern struct sec_jack_control_data jack_controls;
 
+typedef void (*sec_jack_button_notify_cb)(int code, int event);
+int sec_jack_register_button_notify_cb(sec_jack_button_notify_cb func);
+
 #endif
 
 #endif

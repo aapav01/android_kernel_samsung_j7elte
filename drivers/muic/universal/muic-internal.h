@@ -90,13 +90,14 @@ typedef struct _muic_vps_table_t {
 	u8  chgdetrun;
 	u8  chgtyp;
 	const char *vps_name;
-	const muic_attached_dev_t attached_dev;
+	muic_attached_dev_t attached_dev;
 	u8 control1;
 }vps_table_type;
 
 struct muic_intr_data {
 	u8	intr1;
 	u8	intr2;
+	u8	intr3;
 };
 
 typedef union _muic_vps_t {
@@ -145,6 +146,12 @@ typedef struct _muic_data_t {
 	bool			is_otg_test;
 	struct delayed_work	init_work;
 	struct delayed_work	usb_work;
+
+	int is_flash_on;
+	int irq_n;
+	int is_afc_device;
+	struct delayed_work	afc_retry_work;
+	struct delayed_work	afc_restart_work;
 }muic_data_t;
 
 extern struct device *switch_device;

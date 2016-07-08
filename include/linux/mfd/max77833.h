@@ -73,6 +73,7 @@ struct max77833_platform_data {
 
 	int num_regulators;
 	struct max77833_regulator_data *regulators;
+	/* haptic motor data */
 	struct max77833_haptic_platform_data *haptic_data;
 	struct mfd_cell *sub_devices;
 	int num_subdevs;

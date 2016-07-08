@@ -190,8 +190,10 @@ static int exynos_enter_lpm(struct cpuidle_device *dev,
 		cpuidle_profile_start(dev->cpu, index | sub_state);
 
 		ret = cpu_suspend(index);
-		if (ret)
+#ifdef CONFIG_SEC_PM_DEBUG
+		if (unlikely(log_en & ret))
 			pr_info("cpuidle : early wakeup.\n");
+#endif
 
 		cpuidle_profile_finish(dev->cpu, ret);
 

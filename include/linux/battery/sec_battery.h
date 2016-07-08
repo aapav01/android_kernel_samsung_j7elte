@@ -195,13 +195,14 @@ struct sec_battery_info {
 	int test_mode;
 	bool factory_mode;
 	bool store_mode;
+	bool ignore_store_mode;
 	bool slate_mode;
 
 	/* MTBF test for CMCC */
 	bool is_hc_usb;
 
-
-
+	bool ignore_siop;
+	int r_siop_level;
 	int siop_level;
 	int stability_test;
 	int eng_not_full_status;
@@ -214,6 +215,10 @@ struct sec_battery_info {
 	bool discharging_ntc;
 	int discharging_ntc_adc;
 	int self_discharging_adc;
+#endif
+#if defined(CONFIG_SW_SELF_DISCHARGING)
+	struct wake_lock self_discharging_wake_lock;
+	bool sw_self_discharging;
 #endif
 
 	bool charging_block;
@@ -343,11 +348,17 @@ enum {
 	BATT_DISCHARGING_NTC_ADC,
 	BATT_SELF_DISCHARGING_CONTROL,
 #endif
+#if defined(CONFIG_SW_SELF_DISCHARGING)
+	BATT_SW_SELF_DISCHARGING,
+#endif
 #if defined(CONFIG_WIRELESS_CHARGER_INBATTERY)
 	BATT_INBAT_WIRELESS_CS100,
 #endif
 	HMT_TA_CONNECTED,
 	HMT_TA_CHARGE,
+#if defined(CONFIG_BATTERY_SMART)
+	FG_FIRMWARE,
+#endif
 #if defined(CONFIG_BATTERY_AGE_FORECAST)
 	FG_CYCLE,
 	FG_FULL_VOLTAGE,

@@ -120,6 +120,7 @@ struct ppsX60_device_data {
 	int hrm_int;
 	int hrm_rst;
 	int hrm_en;
+	int led_3p3_en;
 	int irq;
 	int ir_sum;
 	int r_sum;

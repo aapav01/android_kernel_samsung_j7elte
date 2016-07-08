@@ -268,6 +268,14 @@ config REGULATOR_MAX77843
 	  Exynos-5 chips to control VCC_CORE and
 	  VCC_USIM voltages.
 
+config REGULATOR_SM5703
+	tristate "SM5703 regulator"
+	depends on MFD_SM5703
+	help
+	  This driver controls a SM5703 regulator
+	  via I2C bus. The provided regulator is suitable for
+	  Exynos-5 chips to control VCC_CORE and
+	  VCC_USIM voltages.
 config REGULATOR_PCAP
 	tristate "Motorola PCAP2 regulator driver"
 	depends on EZX_PCAP
@@ -373,13 +381,6 @@ config REGULATOR_S2MU003
 	help
 	 This driver supports a Samsung Sub-PMIC S2MU003 voltage output regulator
 	 via I2C bus. S2MU003 is comprised of Buck & LDOs.
-
-config REGULATOR_SM5703
-	tristate "SM5703 regulator"
-	depends on MFD_SM5703
-	help
-	  This driver controls a SM5703 regulator
-	  via I2C bus.
 
 config REGULATOR_S5M8767
 	tristate "Samsung S5M8767A voltage regulator"

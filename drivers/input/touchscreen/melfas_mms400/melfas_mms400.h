@@ -32,6 +32,7 @@
 #include <linux/platform_device.h>
 #include <linux/gpio_event.h>
 #include <linux/wakelock.h>
+#include <linux/vmalloc.h>
 #include <asm/uaccess.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pinctrl/consumer.h>
@@ -47,10 +48,6 @@
 #include <linux/muic/muic.h>
 #include <linux/muic/muic_notifier.h>
 #include <linux/vbus_notifier.h>
-#endif
-
-#ifdef CONFIG_INPUT_BOOSTER
-#include <linux/input/input_booster.h>
 #endif
 
 #ifdef CONFIG_SEC_DEBUG_TSP_LOG
@@ -98,6 +95,12 @@
 #else
 #define MMS_USE_DEVICETREE		0
 #endif
+
+#if defined(CONFIG_GLOVE_TOUCH)
+#define GLOVE_MODE
+#endif
+
+#define COVER_MODE
 
 #define MMS_DEVICE_NAME	"mms_ts"
 #define MMS_CONFIG_DATE		{0x00, 0x00, 0x00, 0x00}
@@ -160,7 +163,7 @@
 #define INPUT_PALM_MAX			1
 
 //Firmware update
-#define INTERNAL_FW_PATH		"tsp_melfas/mms438_j7.fw"
+#define INTERNAL_FW_PATH		"tsp_melfas/mms449_carmen2.fw"
 #define EXTERNAL_FW_PATH		"/sdcard/melfas.mfsb"
 #define FFU_FW_PATH	"ffu_tsp.bin"
 #define MMS_USE_AUTO_FW_UPDATE	1

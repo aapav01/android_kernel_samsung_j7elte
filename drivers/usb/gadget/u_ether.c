@@ -486,7 +486,12 @@ static int alloc_requests(struct eth_dev *dev, struct gether *link, unsigned n)
 	status = prealloc(&dev->tx_reqs, link->in_ep, n);
 	if (status < 0)
 		goto fail;
-	status = prealloc(&dev->rx_reqs, link->out_ep, n);
+	
+	if (link->is_fixed)
+		status = prealloc(&dev->rx_reqs, link->out_ep, n/2);
+	else
+		status = prealloc(&dev->rx_reqs, link->out_ep, n);
+	
 	if (status < 0)
 		goto fail;
 	goto done;
@@ -565,7 +570,7 @@ static void process_uether_rx(struct eth_dev *dev)
 #ifndef CONFIG_USB_NCM_SUPPORT_MTU_CHANGE
 			DBG(dev, "rx length %d\n", skb->len);
 #else
-			printk(KERN_DEBUG "usb: %s Drop rx length %d\n",__func__,skb->len);
+			pr_debug("usb: %s Drop rx length %d\n",__func__,skb->len);
 #endif
 
 			DBG(dev, "rx length %d\n", skb->len);

@@ -13,7 +13,7 @@
  */
 #include <linux/sec_batt.h>
 
-#if defined(CONFIG_BATTERY_SAMSUNG)
+#if defined(CONFIG_BATTERY_SAMSUNG) || defined(CONFIG_BATTERY_SMART)
 
 unsigned int lpcharge;
 EXPORT_SYMBOL(lpcharge);
@@ -38,6 +38,6 @@ static int sec_bat_get_fg_reset(char *val)
 {
 	fg_reset = strncmp(val, "1", 1) ? 0 : 1;
 	pr_info("%s, fg_reset:%d\n", __func__, fg_reset);
-	return 1;
+        return 1;
 }
 __setup("fg_reset=", sec_bat_get_fg_reset);

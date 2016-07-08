@@ -902,6 +902,10 @@ EXPORT_SYMBOL(mmc_start_req);
  */
 void mmc_wait_for_req(struct mmc_host *host, struct mmc_request *mrq)
 {
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	if (mmc_bus_needs_resume(host))
+		mmc_resume_bus(host);
+#endif	
 	__mmc_start_req(host, mrq);
 	mmc_wait_for_req_done(host, mrq);
 }
@@ -2359,6 +2363,16 @@ int mmc_erase(struct mmc_card *card, unsigned int from, unsigned int nr,
 	if (to <= from)
 		return -EINVAL;
 
+	/* to set the address in 16k (32sectors) */
+	if(arg == MMC_TRIM_ARG) {
+		if ((from % 32) != 0)
+			from = ((from >> 5) + 1) << 5;
+
+		to = (to >> 5) << 5;
+		if (from >= to)
+			return 0;
+	}
+
 	/* 'from' and 'to' are inclusive */
 	to -= 1;
 
@@ -2824,16 +2838,20 @@ void mmc_start_host(struct mmc_host *host)
 		mmc_power_off(host);
 	else
 		mmc_power_up(host);
-
 #ifdef CONFIG_MMC_DW_EXYNOS /* do detect change wifi only in DW_EXYNOS */
 	if (!strcmp("mmc1", mmc_hostname(host)))
-#if defined(CONFIG_BCM43455) || defined(CONFIG_BCM43455_MODULE)
+#if defined(CONFIG_BCM43455) || defined(CONFIG_BCM43455_MODULE) || \
+    defined(CONFIG_BCM4343) || defined(CONFIG_BCM4343_MODULE) || \
+    defined(CONFIG_BCM43454) || defined(CONFIG_BCM43454_MODULE)
 		printk("%s skip mmc_detect_change\n", mmc_hostname(host));
 #else
 		mmc_detect_change(host, 0);
 #endif
 #else
-#if defined(CONFIG_BCM43455) || defined(CONFIG_BCM43455_MODULE)
+#if defined(CONFIG_BCM43455) || defined(CONFIG_BCM43455_MODULE) || \
+    defined(CONFIG_BCM4343) || defined(CONFIG_BCM4343_MODULE) || \
+    defined(CONFIG_BCM43454) || defined(CONFIG_BCM43454_MODULE)
+
 	if (strcmp("mmc1", mmc_hostname(host)))
 #endif
 	mmc_detect_change(host, 0);
@@ -3348,6 +3366,20 @@ destroy_workqueue:
 
 	return ret;
 }
+#if defined(CONFIG_BCM43455) || defined(CONFIG_BCM43455_MODULE) || \
+    defined(CONFIG_BCM4343) || defined (CONFIG_BCM4343_MODULE) || \
+    defined(CONFIG_BCM43454) || defined (CONFIG_BCM43454_MODULE)
+void mmc_ctrl_power(struct mmc_host *host, bool onoff)
+{
+	 if (!onoff) {
+		mmc_claim_host(host);
+                mmc_set_clock(host, host->f_init);
+		mmc_delay(1);
+		mmc_release_host(host);
+	 }
+}
+EXPORT_SYMBOL(mmc_ctrl_power);
+#endif 
 
 static void __exit mmc_exit(void)
 {

@@ -41,41 +41,41 @@
 
 static unsigned int reg_defaults[NUM_OF_PPG_REG] = {
 	0x0,			/* 0x00_00 AFE_CONTROL0 : REG_READ[0]=1 */
-	80,			/* 0x01_01 AFE_LED2STC : [15:0] */
-	999,			/* 0x02_02 AFE_LED2ENDC : [15:0] */
-	2000,		/* 0x03_03 AFE_LED1LEDSTC : [15:0] */
-	2999,		/* 0x04_04 AFE_LED1LEDENDC : [15:0] */
-	1080,		/* 0x05_05 AFE_ALED2STC_LED3STC : [15:0] */
-	1999,		/* 0x06_06 AFE_ALED2ENDC_LED3ENDC : [15:0] */
-	2080,		/* 0x07_07 AFE_LED1STC : [15:0] */
-	2999,		/* 0x08_08 AFE_LED1ENDC : [15:0] */
-	0,			/* 0x09_09 AFE_LED2LEDSTC : [15:0] */
-	999,			/* 0x0a_10 AFE_LED2LEDENDC : [15:0] */
-	3080,		/* 0x0b_11 AFE_ALED1STC : [15:0] */
-	3999,		/* 0x0c_12 AFE_ALED1ENDC : [15:0] */
-	1007,		/* 0x0d_13 AFE_LED2CONVST : [15:0] */
-	1999,		/* 0x0e_14 AFE_LED2CONVEND : [15:0] */
-	2007,		/* 0x0f_15 AFE_ALED2CONVST_LED3CONVST : [15:0] */
-	2999,		/* 0x10_16 AFE_ALED2CONVEND_LED3CONVEND : [15:0] */
-	3007,		/* 0x11_17 AFE_LED1CONVST : [15:0] */
-	3999,		/* 0x12_18 AFE_LED1CONVEND : [15:0] */
-	4007,		/* 0x13_19 AFE_ALED1CONVST : [15:0] */
-	4999,		/* 0x14_20 AFE_ALED1CONVEND : [15:0] */
-	1000,		/* 0x15_21 AFE_ADCRSTSTCT0 : [15:0] */
-	1003,		/* 0x16_22 AFE_ADCRSTENDCT0 : [15:0] */
-	2000,		/* 0x17_23 AFE_ADCRSTSTCT1 : [15:0] */
-	2003,		/* 0x18_24 AFE_ADCRSTENDCT1 : [15:0] */
-	3000,		/* 0x19_25 AFE_ADCRSTSTCT2 : [15:0] */
-	3003,		/* 0x1a_26 AFE_ADCRSTENDCT2 : [15:0] */
-	4000,		/* 0x1b_27 AFE_ADCRSTSTCT3 : [15:0] */
-	4003,		/* 0x1c_28 AFE_ADCRSTENDCT3 : [15:0] */
-	39999,		/* 0x1d_29 AFE_PRPCOUNT : [15:0] */
-	0x102,		/* 0x1e_30 AFE_CONTROL1 : TIMEREN[8]=1, NUMAV[3:0]=2 */
+	0x00008d,		/* 0x01_01 AFE_LED2STC : [15:0] */
+	0x0000f1,		/* 0x02_02 AFE_LED2ENDC : [15:0] */
+	0x000000,		/* 0x03_03 AFE_LED1LEDSTC : [15:0] */
+	0x000078,		/* 0x04_04 AFE_LED1LEDENDC : [15:0] */
+	0x00232f,		/* 0x05_05 AFE_ALED2STC_LED3STC : [15:0] */
+	0x002393,		/* 0x06_06 AFE_ALED2ENDC_LED3ENDC : [15:0] */
+	0x000014,		/* 0x07_07 AFE_LED1STC : [15:0] */
+	0x000078,		/* 0x08_08 AFE_LED1ENDC : [15:0] */
+	0x000079,		/* 0x09_09 AFE_LED2LEDSTC : [15:0] */
+	0x0000f1,		/* 0x0a_10 AFE_LED2LEDENDC : [15:0] */
+	0x0022b6,		/* 0x0b_11 AFE_ALED1STC : [15:0] */
+	0x00231a,		/* 0x0c_12 AFE_ALED1ENDC : [15:0] */
+	0x00239b,		/* 0x0d_13 AFE_LED2CONVST : [15:0] */
+	0x002472,		/* 0x0e_14 AFE_LED2CONVEND : [15:0] */
+	0x00247a,		/* 0x0f_15 AFE_ALED2CONVST_LED3CONVST : [15:0] */
+	0x002551,		/* 0x10_16 AFE_ALED2CONVEND_LED3CONVEND : [15:0] */
+	0x002559,		/* 0x11_17 AFE_LED1CONVST : [15:0] */
+	0x002630,		/* 0x12_18 AFE_LED1CONVEND : [15:0] */
+	0x002638,		/* 0x13_19 AFE_ALED1CONVST : [15:0] */
+	0x00270f,		/* 0x14_20 AFE_ALED1CONVEND : [15:0] */
+	0x002394,		/* 0x15_21 AFE_ADCRSTSTCT0 : [15:0] */
+	0x00239a,		/* 0x16_22 AFE_ADCRSTENDCT0 : [15:0] */
+	0x002473,		/* 0x17_23 AFE_ADCRSTSTCT1 : [15:0] */
+	0x002479,		/* 0x18_24 AFE_ADCRSTENDCT1 : [15:0] */
+	0x002552,		/* 0x19_25 AFE_ADCRSTSTCT2 : [15:0] */
+	0x002558,		/* 0x1a_26 AFE_ADCRSTENDCT2 : [15:0] */
+	0x002631,		/* 0x1b_27 AFE_ADCRSTSTCT3 : [15:0] */
+	0x002637,		/* 0x1c_28 AFE_ADCRSTENDCT3 : [15:0] */
+	0x00270F,		/* 0x1d_29 AFE_PRPCOUNT : [15:0] */
+	0x000102,		/* 0x1e_30 AFE_CONTROL1 : TIMEREN[8]=1, NUMAV[3:0]=2 */
 	0x0,			/* 0x1f_31 AFE_SPARE1 : */
-	0x8002,		/* 0x20_32 AFE_TIAGAIN : ENSEPGAIN[15]=0, TIA_CF_SEP[5:3]=5pF, TIA_GAIN_SEP[2:0]=50k */
-	0x2,			/* 0x21_33 AFE_TIAAMBGAIN : TIA_CF[5:3]=5pF, TIA_GAIN[2:0]=50k */
-	0xfc0,		/* 0x22_34 AFE_LEDCNTRL : ILED3[17:12]=0mA, ILED2[11:6]=0mA, ILED1[5:0]=0mA */
-	0x20200,		/* 0x23_35 AFE_CONTROL2 : [17]=1, OSC_ENABLE[9]=1(internal), DYNAMIC[20][14][4][3], PWDN[1][0], [0x124218->0x20200]*/
+	0x0,			/* 0x20_32 AFE_TIAGAIN : ENSEPGAIN[15]=0, TIA_CF_SEP[5:3]=5pF, TIA_GAIN_SEP[2:0]=50k */
+	0x1,			/* 0x21_33 AFE_TIAAMBGAIN : TIA_CF[5:3]=5pF, TIA_GAIN[2:0]=50k */
+	0x03ffc0,		/* 0x22_34 AFE_LEDCNTRL : ILED3[17:12]=0mA, ILED2[11:6]=0mA, ILED1[5:0]=0mA */
+	0x124218,		/* 0x23_35 AFE_CONTROL2 : [17]=1, OSC_ENABLE[9]=1(internal), DYNAMIC[20][14][4][3], PWDN[1][0], [0x124218->0x20200]*/
 	0x0,			/* 0x24_36 AFE_SPARE2 : */
 	0x0,			/* 0x25_37 AFE_SPARE3 : */
 	0x0,			/* 0x26_38 AFE_SPARE4 : */
@@ -90,15 +90,15 @@ static unsigned int reg_defaults[NUM_OF_PPG_REG] = {
 	0x0,			/* 0x2f_47 AFE_LED1ALED1VAL : [23:0] */
 	0x0,			/* 0x30_48 AFE_DIAG : */
 	0x0,			/* 0x31_49 AFE_CONTROL3 : [5], CLKDIV_EXIMODE[2:0] */
-	5400,		/* 0x32_50 AFE_DPD1STC_PDNCYCLESTC : [15:0] */
-	39199,		/* 0x33_51 AFE_DPD1ENDC_PDNCYCLEENDC : [15:0] */
+	0x0001b9,		/* 0x32_50 AFE_DPD1STC_PDNCYCLESTC : [15:0] */
+	0x0021ee,		/* 0x33_51 AFE_DPD1ENDC_PDNCYCLEENDC : [15:0] */
 	0,			/* 0x34_52 AFE_DPD2STC : */
 	0,			/* 0x35_53 AFE_DPD2ENDC : */
-	1000,		/* 0x36_54 AFE_REFSTC_LED3LEDSTC : [15:0] */
-	1999,		/* 0x37_55 AFE_REFENDC_LED3LEDENDC : [15:0] */
+	0x00231b,		/* 0x36_54 AFE_REFSTC_LED3LEDSTC : [15:0] */
+	0x002393,		/* 0x37_55 AFE_REFENDC_LED3LEDENDC : [15:0] */
 	0x0,			/* 0x38_56 AFE_RESERVED3 : */
-	0x0,			/* 0x39_57 AFE_CLK_DIV_REG : [2:0]=0 , ratio==1 */
-	0x0,		/* 0x3a_58 AFE_DAC_SETTING_REG : [19][18:15][14][13:10][9][8:5][4][3:0] */
+	0x000005,		/* 0x39_57 AFE_CLK_DIV_REG : [2:0]=0 , ratio==1 */
+	0x0,			/* 0x3a_58 AFE_DAC_SETTING_REG : [19][18:15][14][13:10][9][8:5][4][3:0] */
 /*	0x0,			0x3a_59 AFE_PROX_L_THRESH_REG : */
 /*	0x0,			0x3a_60 AFE_PROX_H_THRESH_REG : */
 /*	0x0,			0x3a_61 AFE_PROX_SETTING_REG : */
@@ -185,10 +185,12 @@ static int ppsX60_regulator_onoff(struct ppsX60_device_data *data, int onoff)
 		}
 	}
 
-	data->vdd_3p3 = regulator_get(NULL, "VLED_3P3");
-	if (IS_ERR(data->vdd_3p3)) {
-		pr_err("%s - regulator_get fail\n", __func__);
-		goto err_3p3;
+	if(!data->led_3p3_en) {
+		data->vdd_3p3 = regulator_get(NULL, "VLED_3P3");
+		if (IS_ERR(data->vdd_3p3)) {
+			pr_err("%s - regulator_get fail\n", __func__);
+			goto err_3p3;
+		}
 	}
 
 	pr_info("%s - onoff = %d\n", __func__, onoff);
@@ -201,10 +203,14 @@ static int ppsX60_regulator_onoff(struct ppsX60_device_data *data, int onoff)
 		} else {
 			gpio_set_value(data->hrm_en, HRM_LDO_ON);
 		}
-		err = regulator_enable(data->vdd_3p3);
-		if (err < 0)
-			pr_err("%s enable vdd_3p3 fail\n", __func__);
-		msleep(10);
+		if(!data->led_3p3_en) {
+			err = regulator_enable(data->vdd_3p3);
+			if (err < 0)
+				pr_err("%s enable vdd_3p3 fail\n", __func__);
+			msleep(10);
+		}else {
+			gpio_set_value(data->led_3p3_en, HRM_LDO_ON);
+		}
 		gpio_set_value(data->hrm_rst, HRM_LDO_ON);
 	} else {
 		if (!data->hrm_en) {
@@ -212,14 +218,20 @@ static int ppsX60_regulator_onoff(struct ppsX60_device_data *data, int onoff)
 		} else {
 			gpio_set_value(data->hrm_en, HRM_LDO_OFF);
 		}
-		regulator_disable(data->vdd_3p3);
+		if(!data->led_3p3_en) {
+			regulator_disable(data->vdd_3p3);
+		}else {
+			gpio_set_value(data->led_3p3_en, HRM_LDO_ON);
+		}
 		msleep(10);
 		gpio_set_value(data->hrm_rst, HRM_LDO_OFF);
 	}
 	if (!data->hrm_en) {
 		regulator_put(data->vdd_1p8);
 	}
-	regulator_put(data->vdd_3p3);
+	if(!data->led_3p3_en) {
+		regulator_put(data->vdd_3p3);
+	}
 	return 0;
 err_3p3:
 	if (!data->hrm_en) {
@@ -271,6 +283,11 @@ static int ppsX60_init_device(struct ppsX60_device_data *data)
 		return -EIO;
 	}
 	err = ppsX60_i2c_write(data, AFE_LED3LEDENDC, reg_defaults[AFE_LED3LEDENDC]);
+	if (err != 0) {
+		pr_err("%s - error AFE_LED3LEDENDC\n", __func__);
+		return -EIO;
+	}
+	err = ppsX60_i2c_write(data, AFE_CLK_DIV_REG, reg_defaults[AFE_CLK_DIV_REG]);
 	if (err != 0) {
 		pr_err("%s - error AFE_LED3LEDENDC\n", __func__);
 		return -EIO;
@@ -1249,13 +1266,13 @@ irqreturn_t ppsX60_irq_handler(int irq, void *device)
 
 	if (err == 0) {
 		if (atomic_read(&data->isEnable_led)) {
-			input_report_rel(data->hrmled_input_dev, REL_X, complement_data[0]); /* IR */
-			input_report_rel(data->hrmled_input_dev, REL_Y, complement_data[1]); /* RED */
+			input_report_rel(data->hrmled_input_dev, REL_X, complement_data[0] + 1); /* IR */
+			input_report_rel(data->hrmled_input_dev, REL_Y, complement_data[1] + 1); /* RED */
 			input_sync(data->hrmled_input_dev);
 		} else {
-			input_report_rel(data->hrm_input_dev, REL_X, complement_data[0]); /* IR */
-			input_report_rel(data->hrm_input_dev, REL_Y, complement_data[1]); /* RED */
-			input_report_rel(data->hrm_input_dev, REL_Z,complement_data[3] + 1); /* AMBIENT */
+			input_report_rel(data->hrm_input_dev, REL_X, complement_data[0] + 1); /* IR */
+			input_report_rel(data->hrm_input_dev, REL_Y, complement_data[1] + 1); /* RED */
+			input_report_rel(data->hrm_input_dev, REL_Z, complement_data[3] + 1); /* AMBIENT */
 			input_sync(data->hrm_input_dev);
 		}
 	}
@@ -1284,6 +1301,12 @@ static int ppsX60_parse_dt(struct ppsX60_device_data *data,
 	if (data->hrm_en < 0) {
 		pr_err("%s - get hrm_en has no en gpio\n", __func__);
 		return -ENODEV;
+	}
+	data->led_3p3_en = of_get_named_gpio_flags(dNode,
+		"ppsx60,led_3p3_en", 0, &flags);
+	if (data->led_3p3_en < 0) {
+		pr_err("%s - get led_3p3_en has no en gpio %d\n", __func__, data->led_3p3_en);
+		data->led_3p3_en =0;
 	}
 	data->hrm_rst = of_get_named_gpio_flags(dNode,
 		"ppsx60,hrm_rst-gpio", 0, &flags);
@@ -1374,9 +1397,17 @@ int ppsX60_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		err = -ENODEV;
 		goto err_of_node;
 	}
+	if(!data->led_3p3_en) {
+		err = gpio_request(data->led_3p3_en, "led_3p3_en");
+		if (err) {
+			pr_err("[SENSOR] %s failed to get gpio led_3p3_en\n", __func__);
+		}
+	}
 
 	gpio_direction_output(data->hrm_en, HRM_LDO_OFF);
-
+	if(!data->led_3p3_en) {
+		gpio_direction_output(data->led_3p3_en, HRM_LDO_OFF);
+	}
 	err = gpio_request(data->hrm_rst, "hrm_rst");
 	if (err) {
 		pr_err("[SENSOR] %s failed to get gpio rst\n", __func__);

@@ -95,14 +95,33 @@ static inline int s2mu003_read_device(struct i2c_client *i2c,
 				int reg, int bytes, void *dest)
 {
 	int ret;
-	if (bytes > 1) {
+	int retry = 0;
+
+	if (bytes > 1)
 		ret = i2c_smbus_read_i2c_block_data(i2c, reg, bytes, dest);
-	} else {
+	else
 		ret = i2c_smbus_read_byte_data(i2c, reg);
-		if (ret < 0)
-			return ret;
-		*(u8 *)dest = (u8)ret;
+
+	while (ret < 0) {
+		pr_err("%s:i2c err on reading reg(0x%x), retrying...\n",
+					__func__, reg);
+		if (retry > 4) {
+			pr_err("%s: retry count > 4 : failed !!\n", __func__);
+			break;
+		}
+		msleep(100);
+		if (bytes > 1)
+			ret = i2c_smbus_read_i2c_block_data(i2c, reg,
+								bytes, dest);
+		else
+			ret = i2c_smbus_read_byte_data(i2c, reg);
+
+		retry++;
 	}
+
+	if (bytes == 1)
+		*(u8 *)dest = (u8)ret;
+
 	return ret;
 }
 
@@ -110,12 +129,31 @@ static inline int s2mu003_write_device(struct i2c_client *i2c,
 				int reg, int bytes, void *src)
 {
 	int ret;
+	int retry = 0;
 	uint8_t *data;
 	if (bytes > 1)
 		ret = i2c_smbus_write_i2c_block_data(i2c, reg, bytes, src);
 	else {
 		data = src;
 		ret = i2c_smbus_write_byte_data(i2c, reg, *data);
+	}
+
+	while (ret < 0) {
+		pr_err("%s:i2c err on writing reg(0x%x), retrying...\n",
+					__func__, reg);
+		if (retry > 4) {
+			pr_err("%s: retry count > 4 : failed !!\n", __func__);
+			break;
+		}
+		msleep(100);
+		if (bytes > 1) {
+			ret = i2c_smbus_write_i2c_block_data(i2c, reg,
+								 bytes, src);
+		} else {
+			data = src;
+			ret = i2c_smbus_write_byte_data(i2c, reg, *data);
+		}
+		retry++;
 	}
 	return ret;
 }
@@ -178,7 +216,7 @@ int s2mu003_reg_write(struct i2c_client *i2c, int reg,
 		dev_err(&i2c->dev, "Failed to get the clientdata\n");
 
 	mutex_lock(&chip->io_lock);
-	ret = i2c_smbus_write_byte_data(i2c, reg, data);
+	ret = s2mu003_write_device(i2c, reg, 1, &data);
 	mutex_unlock(&chip->io_lock);
 
 	return ret;
@@ -203,7 +241,7 @@ int s2mu003_assign_bits(struct i2c_client *i2c, int reg,
 
 	value &= ~mask;
 	value |= data;
-	ret = i2c_smbus_write_byte_data(i2c, reg, value);
+	ret = s2mu003_write_device(i2c, reg, 1, &value);
 
 out:
 	mutex_unlock(&chip->io_lock);
@@ -250,7 +288,6 @@ static int s2mu003_mfd_probe(struct i2c_client *i2c,
 			    const struct i2c_device_id *id)
 {
 	int ret = 0;
-	u8 data = 0;
 	struct device_node *of_node = i2c->dev.of_node;
 	s2mu003_mfd_chip_t *chip;
 	s2mu003_mfd_platform_data_t *pdata = i2c->dev.platform_data;
@@ -314,12 +351,6 @@ static int s2mu003_mfd_probe(struct i2c_client *i2c,
 	wake_lock_init(&(chip->irq_wake_lock), WAKE_LOCK_SUSPEND,
 			"s2mu003mfd_wakelock");
 
-	/* To disable MRST function should be
-	finished before set any reg init-value*/
-	data = s2mu003_reg_read(i2c, 0x47);
-	pr_info("%s : Manual Reset Data = 0x%x", __func__, data);
-	s2mu003_clr_bits(i2c, 0x47, 1<<3); /*Disable Manual Reset*/
-
 	ret = s2mu003_init_irq(chip);
 
 	if (ret < 0) {
@@ -380,10 +411,12 @@ err_add_regulator_devs:
 err_init_irq:
 	wake_lock_destroy(&(chip->irq_wake_lock));
 	mutex_destroy(&chip->io_lock);
-	kfree(chip);
 irq_base_err:
-err_mfd_nomem:
 err_i2cfunc_not_support:
+	kfree(chip);
+err_mfd_nomem:
+	if(pdata)
+		kfree(pdata);
 err_parse_dt:
 err_dt_nomem:
 	return ret;

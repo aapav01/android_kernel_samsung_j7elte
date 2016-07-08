@@ -26,7 +26,7 @@ struct tc300k_platform_data {
 	int gpio_scl;
 	int gpio_sub_det;
 	int i2c_gpio;
-	int (*power) (bool on);
+	int (*power) ( bool on);
 	int (*power_isp) (bool on);
 	int (*keyled) (bool on);
 	u32 irq_gpio_flags;

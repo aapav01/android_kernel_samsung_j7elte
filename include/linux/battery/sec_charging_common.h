@@ -82,11 +82,11 @@ enum sec_battery_adc_channel {
 	SEC_BAT_ADC_CHANNEL_TEMP_AMBIENT,
 	SEC_BAT_ADC_CHANNEL_FULL_CHECK,
 	SEC_BAT_ADC_CHANNEL_VOLTAGE_NOW,
-	SEC_BAT_ADC_CHANNEL_NUM,
 	SEC_BAT_ADC_CHANNEL_CHG_TEMP,
 	SEC_BAT_ADC_CHANNEL_INBAT_VOLTAGE,
 	SEC_BAT_ADC_CHANNEL_DISCHARGING_CHECK,
 	SEC_BAT_ADC_CHANNEL_DISCHARGING_NTC,
+	SEC_BAT_ADC_CHANNEL_NUM,
 };
 
 /* charging mode */
@@ -153,7 +153,19 @@ enum sec_battery_full_charged {
 	SEC_BATTERY_FULLCHARGED_CHGINT,
 	/* charger power supply property, NO additional full condition */
 	SEC_BATTERY_FULLCHARGED_CHGPSY,
+	SEC_BATTERY_FULLCHARGED_SMART_FG,
 };
+
+/* Self discharger type */
+enum sec_battery_discharger_type {
+	/* type ADC */
+	SEC_BAT_SELF_DISCHARGING_BY_ADC = 0,
+	/* type Fuel Gauge */
+	SEC_BAT_SELF_DISCHARGING_BY_FG,
+	/* type Charger */
+	SEC_BAT_SELF_DISCHARGING_BY_CHG,
+};
+
 #define sec_battery_full_charged_t \
 	enum sec_battery_full_charged
 
@@ -401,8 +413,9 @@ struct sec_battery_platform_data {
 	void (*monitor_additional_check)(void);
 	bool (*bat_gpio_init)(void);
 	bool (*fg_gpio_init)(void);
+	bool (*chg_gpio_init)(void);
 	bool (*is_lpm)(void);
-	bool (*check_jig_status) (void);
+	bool (*check_jig_status)(void);
 	bool (*is_interrupt_cable_check_possible)(int);
 	int (*check_cable_callback)(void);
 	int (*get_cable_from_extended_cable_type)(int);
@@ -447,7 +460,9 @@ struct sec_battery_platform_data {
 	/* 1 : active high, 0 : active low */
 	int bat_polarity_ta_nconnected;
 	int bat_irq;
+	int cable_irq;
 	int bat_irq_gpio;
+	int cable_irq_gpio;
 	int wchg_ctl;
 	unsigned int bat_irq_attr;
 	int jig_irq;
@@ -466,12 +481,17 @@ struct sec_battery_platform_data {
 	int swelling_high_temp_recov;
 	int swelling_low_temp_block;
 	int swelling_low_temp_recov;
-	int swelling_chg_current;
+	unsigned int swelling_chg_current;
+	unsigned int swelling_high_chg_current;
+	unsigned int swelling_low_chg_current;
+	unsigned int swelling_full_check_current_2nd;
 	unsigned int swelling_normal_float_voltage;
 	unsigned int swelling_drop_float_voltage;
 	unsigned int swelling_high_rechg_voltage;
 	unsigned int swelling_low_rechg_voltage;
 	unsigned int swelling_block_time;
+	unsigned int swelling_high_temp_topoff;
+	unsigned int swelling_low_temp_topoff;
 
 	/* self discharging */
 	bool self_discharging_en;
@@ -482,6 +502,7 @@ struct sec_battery_platform_data {
 	int force_discharging_limit;
 	int force_discharging_recov;
 	int factory_discharging;
+	unsigned int self_discharging_type;
 
 	/* Monitor setting */
 	sec_battery_monitor_polling_t polling_type;
@@ -641,6 +662,13 @@ struct sec_battery_platform_data {
 	bool wchg_ctl_en;
 	bool always_enable;
 
+#if defined(CONFIG_SW_SELF_DISCHARGING)
+	int self_discharging_temp_block;
+	int self_discharging_volt_block;
+	int self_discharging_temp_recov;
+	int self_discharging_temp_pollingtime;
+#endif
+
 	/* ADC setting */
 	unsigned int adc_check_count;
 	/* ADC type for each channel */
@@ -653,6 +681,9 @@ struct sec_charger_platform_data {
 	/* charging current for type (0: not use) */
 	sec_charging_current_t *charging_current;
 
+	/* wirelss charger */
+	char *wireless_charger_name;
+
 	int vbus_ctrl_gpio;
 	int chg_gpio_en;
 	/* 1 : active high, 0 : active low */
@@ -660,10 +691,27 @@ struct sec_charger_platform_data {
 	/* float voltage (mV) */
 	int chg_float_voltage;
 
-	int irq_gpio;
 	int chg_irq;
 	int wpc_det;
 	unsigned long chg_irq_attr;
+	int wireless_cc_cv;
+
+	int siop_call_cc_current;
+	int siop_call_cv_current;
+#if defined(CONFIG_WIRELESS_CHARGER_HIGH_VOLTAGE)
+	int wpc_charging_limit_current;
+	int sleep_mode_limit_current;
+#endif
+	int siop_input_limit_current;
+	int siop_charging_limit_current;
+	int siop_hv_input_limit_current;
+	int siop_hv_charging_limit_current;
+	int siop_wireless_input_limit_current;
+	int siop_wireless_charging_limit_current;
+	int siop_hv_wireless_input_limit_current;
+	int siop_hv_wireless_charging_limit_current;
+
+	bool support_slow_charging;
 
 	/* OVP/UVLO check */
 	sec_battery_ovp_uvlo_t ovp_uvlo_check_type;

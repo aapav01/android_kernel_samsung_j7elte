@@ -76,6 +76,7 @@ struct s2801x_priv {
 	unsigned short i2c_addr;
 	atomic_t is_cp_running;
 	atomic_t num_active_stream;
+	atomic_t use_count_cp;
 	atomic_t use_count_bt;
 	struct pinctrl *pinctrl;
 	bool	rpm_disable;
@@ -430,15 +431,23 @@ void s2801x_startup(s2801x_if_t interface)
 
 	atomic_inc(&s2801x->num_active_stream);
 
-	if (interface == S2801X_IF_BT) {
-		atomic_inc(&s2801x->use_count_bt);
-		if (atomic_read(&s2801x->use_count_bt) == 1)
-			s2801x_cfg_gpio(s2801x->dev, "default");
-	}
-
 #ifdef CONFIG_PM_RUNTIME
 	pm_runtime_get_sync(s2801x->dev);
 #endif
+
+	switch(interface) {
+	case S2801X_IF_CP:
+		atomic_inc(&s2801x->use_count_cp);
+		break;
+	case S2801X_IF_BT:
+		atomic_inc(&s2801x->use_count_bt);
+		if (atomic_read(&s2801x->use_count_bt) == 1)
+			s2801x_cfg_gpio(s2801x->dev, "default");
+		break;
+	default:
+		break;
+	}
+
 }
 EXPORT_SYMBOL_GPL(s2801x_startup);
 
@@ -448,10 +457,17 @@ void s2801x_shutdown(s2801x_if_t interface)
 
 	atomic_dec(&s2801x->num_active_stream);
 
-	if (interface == S2801X_IF_BT) {
+	switch(interface) {
+	case S2801X_IF_CP:
+		atomic_dec(&s2801x->use_count_cp);
+		break;
+	case S2801X_IF_BT:
 		atomic_dec(&s2801x->use_count_bt);
 		if (atomic_read(&s2801x->use_count_bt) == 0)
 			s2801x_cfg_gpio(s2801x->dev, "bt-idle");
+		break;
+	default:
+		break;
 	}
 
 #ifdef CONFIG_PM_RUNTIME
@@ -476,6 +492,23 @@ bool is_cp_aud_enabled(void)
 		return false;
 }
 EXPORT_SYMBOL_GPL(is_cp_aud_enabled);
+
+ /**
+  * is_cp_voice_call(): Checks whether CP call is active
+  *
+  * Returns true if CP voice call is active, false otherwise
+  */
+bool is_cp_voice_call(void)
+{
+	if (s2801x == NULL)
+		return false;
+
+	if (atomic_read(&s2801x->use_count_cp))
+		return true;
+	else
+		return false;
+}
+EXPORT_SYMBOL_GPL(is_cp_voice_call);
 
 /**
  * TLV_DB_SCALE_ITEM
@@ -1488,6 +1521,7 @@ static int s2801x_probe(struct snd_soc_codec *codec)
 	}
 	atomic_set(&s2801x->is_cp_running, 0);
 	atomic_set(&s2801x->num_active_stream, 0);
+	atomic_set(&s2801x->use_count_cp, 0);
 	atomic_set(&s2801x->use_count_bt, 0);
 
 	if (of_find_property(s2801x->dev->of_node,
@@ -1728,7 +1762,7 @@ static int s2801x_runtime_resume(struct device *dev)
 	lpass_get_sync(dev);
 	s2801x_runtime_power_on(dev);
 	s2801x_clk_enable(dev);
-	s2801x_cfg_gpio(dev, "default");
+	s2801x_cfg_gpio(dev, "bt-idle");
 
 	regcache_cache_only(s2801x->regmap, false);
 	regcache_sync(s2801x->regmap);

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2010 Samsung Electronics
- * Hyoyoung Kim <hyway.kim@samsung.com>
+ * Copyright (C) 2015 Samsung Electronics
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +26,7 @@
 
 /* s2mm001 muic register read/write related information defines. */
 
-/* Slave addr = 0x4A: MUIC */
+#define S2MM001B_I2C_ADDR		(0x4A)
 
 /* S2MM001 I2C registers */
 enum s2mm001_muic_reg {
@@ -38,9 +37,8 @@ enum s2mm001_muic_reg {
 	S2MM001_MUIC_REG_INTMASK1	= 0x05,
 	S2MM001_MUIC_REG_INTMASK2	= 0x06,
 	S2MM001_MUIC_REG_ADC		= 0x07,
-	S2MM001_MUIC_REG_TIMING1		= 0x08,
+	S2MM001_MUIC_REG_TIMING1	= 0x08,
 	S2MM001_MUIC_REG_TIMING2	= 0x09,
-	/* unused registers */
 	S2MM001_MUIC_REG_DEV_T1		= 0x0a,
 	S2MM001_MUIC_REG_DEV_T2		= 0x0b,
 
@@ -51,12 +49,13 @@ enum s2mm001_muic_reg {
 	S2MM001_MUIC_REG_TIMING3	= 0x20,
 	S2MM001_MUIC_REG_OCP		= 0x22,
 	S2MM001_MUIC_REG_CTRL2		= 0x23,
+	S2MM001_MUIC_REG_ACD_MODE	= 0x25,
+	S2MM001_MUIC_REG_RESERVED	= 0x2B,
+	S2MM001_MUIC_REG_RESERVED2	= 0x35,
+	S2MM001_MUIC_REG_RESERVED3	= 0x3F,
+
 	S2MM001_MUIC_REG_END,
 };
-
-/* S2MM001 REGISTER ENABLE or DISABLE bit */
-#define S2MM001_ENABLE_BIT 1
-#define S2MM001_DISABLE_BIT 0
 
 /* S2MM001 Control register */
 #define CTRL_SWITCH_OPEN_SHIFT		4
@@ -64,22 +63,32 @@ enum s2mm001_muic_reg {
 #define CTRL_MANUAL_SW_SHIFT		2
 #define CTRL_WAIT_SHIFT			1
 #define CTRL_INT_MASK_SHIFT		0
+
 #define CTRL_SWITCH_OPEN_MASK		(0x1 << CTRL_SWITCH_OPEN_SHIFT)
 #define CTRL_RAW_DATA_MASK		(0x1 << CTRL_RAW_DATA_SHIFT)
 #define CTRL_MANUAL_SW_MASK		(0x1 << CTRL_MANUAL_SW_SHIFT)
 #define CTRL_WAIT_MASK			(0x1 << CTRL_WAIT_SHIFT)
 #define CTRL_INT_MASK_MASK		(0x1 << CTRL_INT_MASK_SHIFT)
-#define CTRL_MASK		(CTRL_SWITCH_OPEN_MASK | CTRL_RAW_DATA_MASK | \
-				/*CTRL_MANUAL_SW_MASK |*/ CTRL_WAIT_MASK | \
-				CTRL_INT_MASK_MASK)
+
+#ifdef CONFIG_MUIC_S2MM001_ENABLE_AUTOSW
+#define CTRL_MASK			(CTRL_SWITCH_OPEN_MASK | \
+						CTRL_MANUAL_SW_MASK | CTRL_WAIT_MASK | \
+						CTRL_INT_MASK_MASK)
+#else
+#define CTRL_MASK			(CTRL_SWITCH_OPEN_MASK | \
+						CTRL_WAIT_MASK | CTRL_INT_MASK_MASK)
+#endif
 
 /* S2MM001 Interrupt 1 register */
+#define INT_OCP_EN_SHIFT		5
 #define INT_OVP_EN_SHIFT		5
 #define INT_LKR_SHIFT			4
 #define INT_LKP_SHIFT			3
 #define INT_KP_SHIFT			2
 #define INT_DETACH_SHIFT		1
 #define INT_ATTACH_SHIFT		0
+
+#define INT_OCP_EN_MASK			(0x1 << INT_OVP_EN_SHIFT)
 #define INT_OVP_EN_MASK			(0x1 << INT_OVP_EN_SHIFT)
 #define INT_LKR_MASK			(0x1 << INT_LKR_SHIFT)
 #define INT_LKP_MASK			(0x1 << INT_LKP_SHIFT)
@@ -91,13 +100,14 @@ enum s2mm001_muic_reg {
 #define INT_ADC_CHANGE_SHIFT		2
 #define INT_RSRV_ATTACH_SHIFT		1
 #define INT_CHG_DET_SHIFT		0
+
 #define INT_ADC_CHANGE_MASK		(0x1 << INT_ADC_CHANGE_SHIFT)
 #define INT_RSRV_ATTACH_MASK		(0x1 << INT_RSRV_ATTACH_SHIFT)
 #define INT_CHG_DET_MASK		(0x1 << INT_CHG_DET_SHIFT)
 
 /* S2MM001 ADC register */
-#define ADC_ADC_SHIFT			0
-#define ADC_ADC_MASK			(0x1f << ADC_ADC_SHIFT)
+#define ADC_MASK				(0x1f)
+#define ADC_CONVERSION_MASK	(0x1 << 7)
 
 /* S2MM001 Timing Set 1 & 2 register Timing table */
 #define OCP_TIME_DELAY_1MS		(0x00)
@@ -123,15 +133,15 @@ enum s2mm001_muic_reg {
 /* S2MM001 Device Type 1 register */
 #define DEV_TYPE1_USB_OTG		(0x1 << 7)
 #define DEV_TYPE1_DEDICATED_CHG		(0x1 << 6)
+#define DEV_TYPE1_DEDICATED_CHG2	(0x3 << 5)
 #define DEV_TYPE1_CDP			(0x1 << 5)
 #define DEV_TYPE1_T1_T2_CHG		(0x1 << 4)
 #define DEV_TYPE1_UART			(0x1 << 3)
 #define DEV_TYPE1_USB			(0x1 << 2)
 #define DEV_TYPE1_AUDIO_2		(0x1 << 1)
 #define DEV_TYPE1_AUDIO_1		(0x1 << 0)
-#define DEV_TYPE1_USB_TYPES	(DEV_TYPE1_USB_OTG | DEV_TYPE1_CDP | \
-				DEV_TYPE1_USB)
-#define DEV_TYPE1_CHG_TYPES	(DEV_TYPE1_DEDICATED_CHG | DEV_TYPE1_CDP)
+#define DEV_TYPE1_USB_TYPES		(DEV_TYPE1_USB_OTG | DEV_TYPE1_CDP | DEV_TYPE1_USB)
+#define DEV_TYPE1_CHG_TYPES		(DEV_TYPE1_DEDICATED_CHG | DEV_TYPE1_CDP)
 
 /* S2MM001 Device Type 2 register */
 #define DEV_TYPE2_AV			(0x1 << 6)
@@ -141,26 +151,21 @@ enum s2mm001_muic_reg {
 #define DEV_TYPE2_JIG_UART_ON		(0x1 << 2)
 #define DEV_TYPE2_JIG_USB_OFF		(0x1 << 1)
 #define DEV_TYPE2_JIG_USB_ON		(0x1 << 0)
-#define DEV_TYPE2_JIG_USB_TYPES		(DEV_TYPE2_JIG_USB_OFF | \
-					DEV_TYPE2_JIG_USB_ON)
+#define DEV_TYPE2_JIG_USB_TYPES		(DEV_TYPE2_JIG_USB_OFF | DEV_TYPE2_JIG_USB_ON)
 #define DEV_TYPE2_JIG_UART_TYPES	(DEV_TYPE2_JIG_UART_OFF)
-#define DEV_TYPE2_JIG_TYPES		(DEV_TYPE2_JIG_UART_TYPES | \
-					DEV_TYPE2_JIG_USB_TYPES)
+#define DEV_TYPE2_JIG_TYPES		(DEV_TYPE2_JIG_UART_TYPES | DEV_TYPE2_JIG_USB_TYPES)
 
 /* S2MM001 Device Type 3 register */
 #define DEV_TYPE3_U200_CHG		(0x1 << 6)
 #define DEV_TYPE3_APPLE_CHG		(0x1 << 5)
 #define DEV_TYPE3_AV_WITH_VBUS		(0x1 << 4)
 #define DEV_TYPE3_NO_STD_CHG		(0x1 << 2)
+#define DEV_TYPE3_VBUS			(0x1 << 1)
 #define DEV_TYPE3_MHL			(0x1 << 0)
-#define DEV_TYPE3_CHG_TYPE	(DEV_TYPE3_U200_CHG | DEV_TYPE3_NO_STD_CHG | \
-				DEV_TYPE3_APPLE_CHG)
-
-/* S2MM001_MUIC_REG_DEV_T3 register */
-#define RSVD1_VBUS		(0x1 << 1)
+#define DEV_TYPE3_CHG_TYPE		(DEV_TYPE3_U200_CHG | DEV_TYPE3_NO_STD_CHG | DEV_TYPE3_APPLE_CHG)
 
 /* S2MM001_MUIC_REG_CTRL2 register */
-#define RSVD3_CHGPUMP_nEN	(0x1 << 0)
+#define RSVD3_CHGPUMP_EN		(0x1 << 0)
 
 /*
  * Manual Switch
@@ -168,54 +173,36 @@ enum s2mm001_muic_reg {
  * 000: Open all / 001: USB / 010: AUDIO / 011: UART / 100: V_AUDIO
  * 00: Vbus to Open / 01: Vbus to Charger / 10: Vbus to MIC / 11: Vbus to VBout
  */
-#define MANUAL_SW1_DM_SHIFT	5
-#define MANUAL_SW1_DP_SHIFT	2
-#define MANUAL_SW1_VBUS_SHIFT	0
-#define MANUAL_SW1_D_OPEN	(0x0)
-#define MANUAL_SW1_D_USB	(0x1)
-#define MANUAL_SW1_D_AUDIO	(0x2)
-#define MANUAL_SW1_D_UART	(0x3)
-#define MANUAL_SW1_V_OPEN	(0x0)
-#define MANUAL_SW1_V_CHARGER	(0x2)
-#define MANUAL_SW1_V_OTGEN	(0x1)
+#define MANUAL_SW1_DM_SHIFT		5
+#define MANUAL_SW1_DP_SHIFT		2
+#define MANUAL_SW1_CHG_SHIFT		1
 
-enum s2mm001_switch_sel_val {
-	S2MM001_SWITCH_SEL_1st_BIT_USB	= (0x1 << 0),
-	S2MM001_SWITCH_SEL_2nd_BIT_UART	= (0x1 << 1),
-};
+#define MANUAL_SW1_OPEN			(0x0)
+#define MANUAL_SW1_USB			(0x1 << MANUAL_SW1_DM_SHIFT | 0x1 << MANUAL_SW1_DP_SHIFT)
+#define MANUAL_SW1_AUDIO		(0x2 << MANUAL_SW1_DM_SHIFT | 0x2 << MANUAL_SW1_DP_SHIFT)
+#define MANUAL_SW1_UART			(0x3 << MANUAL_SW1_DM_SHIFT | 0x3 << MANUAL_SW1_DP_SHIFT)
+
+#define MANUAL_SW1_OTGEN		(0x1)
+#define MANUAL_SW1_CHARGER		(0x1 << MANUAL_SW1_CHG_SHIFT)
 
 enum s2mm001_reg_manual_sw1_value {
-	MANSW1_OPEN =	(MANUAL_SW1_D_OPEN << MANUAL_SW1_DM_SHIFT) |
-			(MANUAL_SW1_D_OPEN << MANUAL_SW1_DP_SHIFT) |
-			(MANUAL_SW1_V_OPEN << MANUAL_SW1_VBUS_SHIFT),
-	MANSW1_OPEN_WITH_V_BUS = (MANUAL_SW1_D_OPEN << MANUAL_SW1_DM_SHIFT) |
-			(MANUAL_SW1_D_OPEN << MANUAL_SW1_DP_SHIFT) |
-			(MANUAL_SW1_V_CHARGER << MANUAL_SW1_VBUS_SHIFT),
-	MANSW1_USB =	(MANUAL_SW1_D_USB << MANUAL_SW1_DM_SHIFT) |
-			(MANUAL_SW1_D_USB << MANUAL_SW1_DP_SHIFT) |
-			(MANUAL_SW1_V_CHARGER << MANUAL_SW1_VBUS_SHIFT),
-	MANSW1_OTG =	(MANUAL_SW1_D_USB << MANUAL_SW1_DM_SHIFT) |
-			(MANUAL_SW1_D_USB << MANUAL_SW1_DP_SHIFT) |
-			(MANUAL_SW1_V_OTGEN << MANUAL_SW1_VBUS_SHIFT),
-	MANSW1_AUDIO =	(MANUAL_SW1_D_AUDIO << MANUAL_SW1_DM_SHIFT) |
-			(MANUAL_SW1_D_AUDIO << MANUAL_SW1_DP_SHIFT) |
-			(MANUAL_SW1_V_CHARGER << MANUAL_SW1_VBUS_SHIFT),
-	MANSW1_UART =	(MANUAL_SW1_D_UART << MANUAL_SW1_DM_SHIFT) |
-			(MANUAL_SW1_D_UART << MANUAL_SW1_DP_SHIFT) |
-			(MANUAL_SW1_V_CHARGER << MANUAL_SW1_VBUS_SHIFT),
-	MANSW1_OPEN_RUSTPROOF = (MANUAL_SW1_D_OPEN << MANUAL_SW1_DM_SHIFT) |
-			(MANUAL_SW1_D_UART << MANUAL_SW1_DP_SHIFT) |
-			(MANUAL_SW1_V_CHARGER << MANUAL_SW1_VBUS_SHIFT),
+	MANSW_OPEN		=	(MANUAL_SW1_OPEN),
+	MANSW_OPEN_WITH_VBUS	=	(MANUAL_SW1_CHARGER),
+	MANSW_USB		=	(MANUAL_SW1_USB | MANUAL_SW1_CHARGER),
+	MANSW_OTG		=	(MANUAL_SW1_USB | MANUAL_SW1_OTGEN),
+	MANSW_AUDIO		=	(MANUAL_SW1_AUDIO | MANUAL_SW1_CHARGER),
+	MANSW_UART		=	(MANUAL_SW1_UART | MANUAL_SW1_CHARGER),
+	MANSW_OPEN_RUSTPROOF	=	(MANUAL_SW1_OPEN | MANUAL_SW1_CHARGER),
 };
 
-#define MANSW2_JIG_EN	(0x1 << 2)
+#define MANUAL_SW2_JIG_EN		(0x1 << 2)
 
 enum s2mm001_muic_reg_init_value {
 	REG_INTMASK1_VALUE		= (0xDC),
 	REG_INTMASK2_VALUE		= (0x20),
-	REG_INTMASK2_VBUS		= (0x02),
-	REG_TIMING1_VALUE		= (OCP_TIME_DELAY_4MS |
-					KEY_PRESS_TIME_200MS),
+	REG_INTMASK2_ADC			= (0x24),
+	REG_INTMASK2_VBUS		= (0x21),
+	REG_TIMING1_VALUE		= (OCP_TIME_DELAY_4MS | KEY_PRESS_TIME_200MS),
 };
 
 /* muic chip specific internal data structure
@@ -232,6 +219,8 @@ struct s2mm001_muic_data {
 	/* model dependant muic platform data */
 	struct muic_platform_data *pdata;
 
+	struct wake_lock wake_lock;
+
 	/* muic support vps list */
 	bool muic_support_list[ATTACHED_DEV_NUM];
 
@@ -247,13 +236,18 @@ struct s2mm001_muic_data {
 	bool	is_rustproof;
 	bool	is_otg_test;
 	bool	sdp_skip;
+	bool	attach_skip;
 #if !defined(CONFIG_MUIC_S2MM001_ENABLE_AUTOSW)
-	bool 	is_jig_on;
+	bool	is_jig_on;
 #endif
+	/* W/A waiting for the charger ic */
+	bool suspended;
+	bool need_to_noti;
 
-	struct delayed_work	init_work;
 	struct delayed_work	usb_work;
 	struct workqueue_struct *muic_wqueue;
+
+	int rev_id;
 };
 
 extern struct device *switch_device;

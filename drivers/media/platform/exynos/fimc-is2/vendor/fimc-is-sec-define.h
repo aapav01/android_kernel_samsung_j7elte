@@ -52,6 +52,7 @@
 #include "crc32.h"
 #include "fimc-is-companion.h"
 #include "fimc-is-device-from.h"
+#include "fimc-is-dt.h"
 
 #define FW_CORE_VER		0
 #define FW_PIXEL_SIZE		1
@@ -97,6 +98,7 @@
 #define FW_3L2		"C13LL"
 #define FW_3L2_E	"E13LL"
 #define FW_3L2_T	"T13LL"
+#define FW_3L2_U	"U13LL"
 #define FW_IMX135	"C13LS"
 #define FW_IMX134	"D08LS"
 #define FW_IMX228	"A20LS"
@@ -123,6 +125,7 @@
 #define FIMC_IS_FW_2T2_EVT0				"fimc_is_fw2_2t2_evt0.bin"
 #define FIMC_IS_FW_2T2_EVT1				"fimc_is_fw2_2t2_evt1.bin"
 #define FIMC_IS_FW_SR544			"fimc_is_fw2_sr544.bin"
+#define FIMC_IS_FW_SR261			"fimc_is_fw2_sr261.bin"
 #define FIMC_IS_FW_COMPANION_EVT0				"companion_fw_evt0.bin"
 #define FIMC_IS_FW_COMPANION_EVT1				"companion_fw_evt1.bin"
 #define FIMC_IS_FW_COMPANION_2P2_EVT1				"companion_fw_2p2_evt1.bin"
@@ -146,6 +149,7 @@
 #define FIMC_IS_2T2_SETF			"setfile_2t2.bin"
 #define FIMC_IS_2P3_SETF			"setfile_2p3.bin"
 #define FIMC_IS_SR544_SETF			"setfile_sr544.bin"
+#define FIMC_IS_SR261_SETF			"setfile_sr261.bin"
 #define FIMC_IS_COMPANION_MASTER_SETF			"companion_master_setfile.bin"
 #define FIMC_IS_COMPANION_MODE_SETF			"companion_mode_setfile.bin"
 #define FIMC_IS_COMPANION_2P2_MASTER_SETF			"companion_2p2_master_setfile.bin"
@@ -187,6 +191,15 @@
 #define FIMC_IS_PROJECT_NAME_SIZE    8
 #define FIMC_IS_ISP_SETFILE_VER_SIZE 6
 
+#if defined(CONFIG_CAMERA_EEPROM_SUPPORT_OIS)
+#define FIMC_IS_OIS_CAL_VER_SIZE     4
+#define FIMC_IS_OIS_FW_VER_SIZE      7
+#define FIMC_IS_OIS_CHIP_INFO_SIZE   16
+#define FIMC_IS_OIS_ADJ_FACTOR_SIZE  5
+#define FIMC_IS_OIS_CAL_DATA_SIZE    40
+#define FIMC_IS_OIS_SHIFT_DATA_SIZE  40
+#endif
+
 #ifndef CAMERA_MODULE_ES_VERSION
 #define CAMERA_MODULE_ES_VERSION	FIMC_IS_LATEST_FROM_VERSION_B
 #endif
@@ -225,6 +238,8 @@ struct fimc_is_from_info {
 	u32		shading_end_addr;
 	u32		setfile_start_addr;
 	u32		setfile_end_addr;
+	u32		af_cal_pan;
+	u32		af_cal_macro;
 	char	header_ver[FIMC_IS_HEADER_VER_SIZE + 1];
 	char	cal_map_ver[FIMC_IS_CAL_MAP_VER_SIZE + 1];
 	char	setfile_ver[FIMC_IS_SETFILE_VER_SIZE + 1];
@@ -313,6 +328,22 @@ struct fimc_is_from_info {
 	bool		is_c1_caldata_read;
 	unsigned long		comp_fw_size;
 #endif
+#if defined(CONFIG_CAMERA_EEPROM_SUPPORT_OIS)
+	u32		ois_cal_start_addr;
+	u32		ois_cal_end_addr;
+	u32		ois_shift_start_addr;
+	u32		ois_shift_end_addr;
+	u32		ois_fw_set_start_addr;
+	u32		ois_fw_set_end_addr;
+	u32		ois_fw_factory_start_addr;
+	u32		ois_fw_factory_end_addr;
+	char	ois_fw_ver[FIMC_IS_OIS_FW_VER_SIZE + 1];
+	char	ois_cal_ver[FIMC_IS_OIS_CAL_VER_SIZE + 1];
+	char	ois_chip_info[FIMC_IS_OIS_CHIP_INFO_SIZE + 1];
+	char	ois_adjust_factor[FIMC_IS_OIS_ADJ_FACTOR_SIZE + 1];
+
+	bool	is_ois_data_read;
+#endif
 	unsigned long		fw_size;
 	unsigned long		setfile_size;
 };
@@ -374,4 +405,6 @@ int fimc_is_sec_core_voltage_select(struct device *dev, char *header_ver);
 int fimc_is_sec_ldo_set_voltage(struct device *dev, char *name, int uV);
 int fimc_is_sec_ldo_enable(struct device *dev, char *name, bool on);
 int fimc_is_sec_ldo_enabled(struct device *dev, char *name);
+int fimc_is_sec_rom_power_on(struct fimc_is_core *core, int position);
+int fimc_is_sec_rom_power_off(struct fimc_is_core *core, int position);
 #endif /* FIMC_IS_SEC_DEFINE_H */

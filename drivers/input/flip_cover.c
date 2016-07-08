@@ -37,13 +37,11 @@ struct hall_drvdata {
 	bool gsm_area;
 	bool irq_state;
 	bool cover_state;
-	bool wa_enable;
 #endif
 };
 
 static bool flip_cover = 1;
 
-/* WorkAround for K3G Hall IRQ Problem */
 #ifdef CONFIG_SENSORS_HALL_IRQ_CTRL
 struct hall_drvdata *g_drvdata;
 
@@ -92,14 +90,22 @@ void hall_irq_set(int state, bool auth_changed)
 	}
 }
 
+static ssize_t hall_irq_ctrl_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	if (g_drvdata->irq_state)
+		sprintf(buf, "OFF");
+	else
+		sprintf(buf, "ON");
+
+	return strlen(buf);
+}
+
 static ssize_t hall_irq_ctrl_store(struct device *dev,
 		struct device_attribute *attr, const char *buf,
 		size_t count)
 {
 	pr_info("%s: %s\n", __func__, buf);
-
-	if (!g_drvdata->wa_enable)
-		return count;
 
 	if (!strncasecmp(buf, "ON", 2)) {
 		g_drvdata->gsm_area = true;
@@ -116,7 +122,7 @@ static ssize_t hall_irq_ctrl_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(hall_irq_ctrl, 0664, NULL, hall_irq_ctrl_store);
+static DEVICE_ATTR(hall_irq_ctrl, 0664, hall_irq_ctrl_show, hall_irq_ctrl_store);
 #endif
 
 static ssize_t hall_detect_show(struct device *dev,
@@ -286,10 +292,6 @@ static int of_hall_data_parsing_dt(struct hall_drvdata *ddata)
 	struct device_node *np_haptic;
 	int gpio;
 	enum of_gpio_flags flags;
-#ifdef CONFIG_SENSORS_HALL_IRQ_CTRL
-	u32 temp;
-	int ret;
-#endif
 
 	np_haptic = of_find_node_by_path("/hall");
 	if (np_haptic == NULL) {
@@ -310,17 +312,6 @@ static int of_hall_data_parsing_dt(struct hall_drvdata *ddata)
 		return -EINVAL;
 	}
 	ddata->irq_flip_cover = gpio;
-
-#ifdef CONFIG_SENSORS_HALL_IRQ_CTRL
-	ret = of_property_read_u32(np_haptic, "hall,gsm_wa", &temp);
-	if (ret) {
-		pr_info("%s: No property about WA\n", __func__);
-		ddata->wa_enable = false;
-	} else {
-		pr_info("%s: get the wa property\n", __func__);
-		ddata->wa_enable = temp;
-	}
-#endif
 
 	return 0;
 }

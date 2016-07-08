@@ -27,6 +27,7 @@
 #include <linux/platform_device.h>
 #include <linux/module.h>
 #include <linux/delay.h>
+#include <linux/wakelock.h>
 
 #include <linux/muic/muic.h>
 #include <linux/muic/s2mm001.h>
@@ -49,8 +50,8 @@ static void s2mm001_muic_handle_detach(struct s2mm001_muic_data *muic_data);
 /*
 #define DEBUG_MUIC
 */
-#ifdef DEBUG_MUIC
 
+#if defined(DEBUG_MUIC)
 #define MAX_LOG 25
 #define READ 0
 #define WRITE 1
@@ -282,9 +283,9 @@ static int s2mm001_muic_jig_on(struct s2mm001_muic_data *muic_data)
 		S2MM001_MUIC_REG_MANSW2);
 
 	if (en)
-		reg |= MANSW2_JIG_EN;
+		reg |= MANUAL_SW2_JIG_EN;
 	else
-		reg &= ~(MANSW2_JIG_EN);
+		reg &= ~(MANUAL_SW2_JIG_EN);
 
 	return s2mm001_i2c_write_byte(muic_data->i2c,
 		S2MM001_MUIC_REG_MANSW2, (u8)reg);
@@ -332,23 +333,24 @@ static ssize_t s2mm001_muic_show_uart_sel(struct device *dev,
 {
 	struct s2mm001_muic_data *muic_data = dev_get_drvdata(dev);
 	struct muic_platform_data *pdata = muic_data->pdata;
+	int ret = 0;
 
 	switch (pdata->uart_path) {
 	case MUIC_PATH_UART_AP:
 		printk(KERN_DEBUG "[muic] %s AP\n",  __func__);
-		sprintf(buf, "AP\n");
+		ret = sprintf(buf, "AP\n");
 		break;
 	case MUIC_PATH_UART_CP:
 		printk(KERN_DEBUG "[muic] %s CP\n",  __func__);
-		sprintf(buf, "CP\n");
+		ret = sprintf(buf, "CP\n");
 		break;
 	default:
 		printk(KERN_DEBUG "[muic] %s UNKNOWN\n",  __func__);
-		sprintf(buf, "UNKNOWN\n");
+		ret = sprintf(buf, "UNKNOWN\n");
 		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int switch_to_ap_uart(struct s2mm001_muic_data *muic_data);
@@ -461,7 +463,7 @@ static ssize_t s2mm001_muic_show_adc(struct device *dev,
 		return sprintf(buf, "UNKNOWN\n");
 	}
 
-	return sprintf(buf, "%x\n", (ret & ADC_ADC_MASK));
+	return sprintf(buf, "%x\n", (ret & ADC_MASK));
 }
 
 static ssize_t s2mm001_muic_show_usb_state(struct device *dev,
@@ -708,9 +710,6 @@ static ssize_t s2mm001_muic_set_apo_factory(struct device *dev,
 		return count;
 	}
 
-	printk(KERN_DEBUG "[muic] %s : %s\n",
-		__func__, mode);
-
 	return count;
 }
 
@@ -865,7 +864,7 @@ static int com_to_open_with_vbus(struct s2mm001_muic_data *muic_data)
 	enum s2mm001_reg_manual_sw1_value reg_val;
 	int ret = 0;
 
-	reg_val = MANSW1_OPEN_WITH_V_BUS;
+	reg_val = MANSW_OPEN_WITH_VBUS;
 	ret = set_com_sw(muic_data, reg_val);
 	if (ret)
 		printk(KERN_ERR "[muic] %s set_com_sw err\n", __func__);
@@ -881,13 +880,13 @@ static int com_to_open(struct s2mm001_muic_data *muic_data)
 	u8 vbvolt;
 
 	vbvolt = s2mm001_i2c_read_byte(muic_data->i2c, S2MM001_MUIC_REG_DEV_T3);
-	vbvolt &= RSVD1_VBUS;
+	vbvolt &= DEV_TYPE3_VBUS;
 	if (vbvolt) {
 		ret = com_to_open_with_vbus(muic_data);
 		return ret;
 	}
 
-	reg_val = MANSW1_OPEN;
+	reg_val = MANSW_OPEN;
 	ret = set_com_sw(muic_data, reg_val);
 	if (ret)
 		printk(KERN_ERR "[muic] %s set_com_sw err\n", __func__);
@@ -901,7 +900,7 @@ static int com_to_usb(struct s2mm001_muic_data *muic_data)
 	enum s2mm001_reg_manual_sw1_value reg_val;
 	int ret = 0;
 
-	reg_val = MANSW1_USB;
+	reg_val = MANSW_USB;
 	ret = set_com_sw(muic_data, reg_val);
 	if (ret)
 		printk(KERN_ERR "[muic] %s set_com_usb err\n", __func__);
@@ -914,7 +913,7 @@ static int com_to_otg(struct s2mm001_muic_data *muic_data)
 	enum s2mm001_reg_manual_sw1_value reg_val;
 	int ret = 0;
 
-	reg_val = MANSW1_OTG;
+	reg_val = MANSW_OTG;
 	ret = set_com_sw(muic_data, reg_val);
 	if (ret)
 		printk(KERN_ERR "[muic] %s set_com_otg err\n", __func__);
@@ -931,7 +930,7 @@ static int com_to_uart(struct s2mm001_muic_data *muic_data)
 		printk(KERN_DEBUG "[muic] %s rustproof mode\n", __func__);
 		return ret;
 	}
-	reg_val = MANSW1_UART;
+	reg_val = MANSW_UART;
 	ret = set_com_sw(muic_data, reg_val);
 	if (ret)
 		printk(KERN_ERR "[muic] %s set_com_uart err\n", __func__);
@@ -944,7 +943,7 @@ static int com_to_audio(struct s2mm001_muic_data *muic_data)
 	enum s2mm001_reg_manual_sw1_value reg_val;
 	int ret = 0;
 
-	reg_val = MANSW1_AUDIO;
+	reg_val = MANSW_AUDIO;
 	ret = set_com_sw(muic_data, reg_val);
 	if (ret)
 		printk(KERN_ERR "[muic] %s set_com_audio err\n", __func__);
@@ -1096,13 +1095,37 @@ static int attach_usb(struct s2mm001_muic_data *muic_data,
 
 	printk(KERN_DEBUG "[muic] %s\n", __func__);
 
+	if (!muic_data->rev_id) {
+		ret = s2mm001_i2c_write_byte(muic_data->i2c,
+		S2MM001_MUIC_REG_INTMASK2, REG_INTMASK2_ADC);
+	}
+
 	ret = attach_usb_util(muic_data, new_dev);
 	if (ret)
 		return ret;
 
 	return ret;
 }
+#if 0
+static int set_vbus_interrupt(struct s2mm001_muic_data *muic_data, int enable)
+{
+	struct i2c_client *i2c = muic_data->i2c;
+	int ret = 0;
 
+	if (enable) {
+		ret = s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_INTMASK2,
+			REG_INTMASK2_VBUS);
+		if (ret < 0)
+			printk(KERN_ERR "[muic] %s(%d)\n", __func__, ret);
+	} else {
+		ret = s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_INTMASK2,
+			REG_INTMASK2_VALUE);
+		if (ret < 0)
+			printk(KERN_ERR "[muic] %s(%d)\n", __func__, ret);
+	}
+	return ret;
+}
+#endif
 static int attach_otg_usb(struct s2mm001_muic_data *muic_data,
 			muic_attached_dev_t new_dev)
 {
@@ -1155,6 +1178,11 @@ static int detach_otg_usb(struct s2mm001_muic_data *muic_data)
 		set_manual_sw(muic_data, 1);
 #endif
 
+	if (!muic_data->rev_id) {
+		ret = s2mm001_i2c_write_byte(muic_data->i2c,
+		S2MM001_MUIC_REG_INTMASK2, REG_INTMASK2_VALUE);
+	}
+
 	muic_data->attached_dev = ATTACHED_DEV_NONE_MUIC;
 
 	if (pdata->usb_path == MUIC_PATH_USB_CP)
@@ -1179,30 +1207,16 @@ static int detach_usb(struct s2mm001_muic_data *muic_data)
 	if (ret)
 		return ret;
 
+	if (!muic_data->rev_id) {
+		ret = s2mm001_i2c_write_byte(muic_data->i2c,
+		S2MM001_MUIC_REG_INTMASK2, REG_INTMASK2_VALUE);
+	}
+
 	muic_data->attached_dev = ATTACHED_DEV_NONE_MUIC;
 
 	if (pdata->usb_path == MUIC_PATH_USB_CP)
 		return ret;
 
-	return ret;
-}
-
-static int set_vbus_interrupt(struct s2mm001_muic_data *muic_data, int enable)
-{
-	struct i2c_client *i2c = muic_data->i2c;
-	int ret = 0;
-
-	if (enable) {
-		ret = s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_INTMASK2,
-			REG_INTMASK2_VBUS);
-		if (ret < 0)
-			printk(KERN_ERR "[muic] %s(%d)\n", __func__, ret);
-	} else {
-		ret = s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_INTMASK2,
-			REG_INTMASK2_VALUE);
-		if (ret < 0)
-			printk(KERN_ERR "[muic] %s(%d)\n", __func__, ret);
-	}
 	return ret;
 }
 
@@ -1212,10 +1226,6 @@ static int attach_deskdock(struct s2mm001_muic_data *muic_data,
 	int ret = 0;
 
 	printk(KERN_DEBUG "[muic] %s vbus(%x)\n", __func__, vbvolt);
-
-	ret = set_vbus_interrupt(muic_data, 1);
-	if (ret)
-		return ret;
 
 #ifdef CONFIG_MACH_DEGAS
 	/* Audio-out doesn't work under AUTO switch mode, so turn it off */
@@ -1245,10 +1255,6 @@ static int detach_deskdock(struct s2mm001_muic_data *muic_data)
 
 	printk(KERN_DEBUG "[muic] %s\n", __func__);
 
-	ret = set_vbus_interrupt(muic_data, 0);
-	if (ret)
-		return ret;
-
 #ifdef CONFIG_MACH_DEGAS
 	/* System rev less than 0.1 cannot use Auto switch mode in DEGAS */
 	if (system_rev >= 0x1)
@@ -1276,10 +1282,6 @@ static int attach_audiodock(struct s2mm001_muic_data *muic_data,
 	int ret = 0;
 
 	printk(KERN_DEBUG "[muic] %s\n", __func__);
-
-	ret = set_vbus_interrupt(muic_data, 1);
-	if (ret)
-		return ret;
 
 	if (!vbus) {
 		ret = detach_charger(muic_data);
@@ -1312,10 +1314,6 @@ static int detach_audiodock(struct s2mm001_muic_data *muic_data)
 
 	printk(KERN_DEBUG "[muic] %s\n", __func__);
 
-	ret = set_vbus_interrupt(muic_data, 0);
-	if (ret)
-		return ret;
-
 	ret = detach_charger(muic_data);
 	if (ret)
 		printk(KERN_ERR "[muic] %s err detach_charger(%d)\n",
@@ -1339,10 +1337,6 @@ static int attach_jig_uart_boot_off(struct s2mm001_muic_data *muic_data,
 	printk(KERN_DEBUG "[muic] %s(%d)\n",
 		__func__, new_dev);
 
-	ret = set_vbus_interrupt(muic_data, 1);
-	if (ret)
-		return ret;
-
 	if (pdata->uart_path == MUIC_PATH_UART_AP)
 		ret = switch_to_ap_uart(muic_data);
 	else
@@ -1358,10 +1352,6 @@ static int detach_jig_uart_boot_off(struct s2mm001_muic_data *muic_data)
 
 	printk(KERN_DEBUG "[muic] %s\n", __func__);
 
-	ret = set_vbus_interrupt(muic_data, 0);
-	if (ret)
-		return ret;
-
 	ret = detach_charger(muic_data);
 	if (ret)
 		printk(KERN_ERR "[muic] %s err detach_charger(%d)\n", __func__, ret);
@@ -1369,6 +1359,31 @@ static int detach_jig_uart_boot_off(struct s2mm001_muic_data *muic_data)
 	muic_data->attached_dev = ATTACHED_DEV_NONE_MUIC;
 
 	return ret;
+}
+
+static int attach_jig_uart_boot_on(struct s2mm001_muic_data *muic_data,
+				muic_attached_dev_t new_dev)
+{
+	int ret = 0;
+
+	printk(KERN_DEBUG "[muic] %s(%d)\n",
+		__func__, new_dev);
+
+	ret = set_com_sw(muic_data, MANSW_OPEN);
+	if (ret)
+		printk(KERN_ERR "[muic] %s set_com_sw err\n", __func__);
+
+	muic_data->attached_dev = ATTACHED_DEV_JIG_UART_ON_MUIC;
+	return ret;
+}
+
+static int dettach_jig_uart_boot_on(struct s2mm001_muic_data *muic_data)
+{
+	printk(KERN_DEBUG "[muic] %s\n", __func__);
+
+	muic_data->attached_dev = ATTACHED_DEV_NONE_MUIC;
+
+	return 0;
 }
 
 static int attach_jig_usb_boot_off(struct s2mm001_muic_data *muic_data,
@@ -1446,6 +1461,7 @@ static void s2mm001_muic_handle_attach(struct s2mm001_muic_data *muic_data,
 		break;
 
 	case ATTACHED_DEV_TA_MUIC:
+	case ATTACHED_DEV_UNDEFINED_CHARGING_MUIC:
 		if (new_dev != muic_data->attached_dev) {
 			printk(KERN_DEBUG "[muic] %s new(%d)!=attached(%d)\n",
 				__func__, new_dev, muic_data->attached_dev);
@@ -1455,6 +1471,7 @@ static void s2mm001_muic_handle_attach(struct s2mm001_muic_data *muic_data,
 
 	case ATTACHED_DEV_JIG_UART_OFF_VB_OTG_MUIC:
 	case ATTACHED_DEV_JIG_UART_OFF_VB_FG_MUIC:
+	case ATTACHED_DEV_JIG_UART_OFF_VB_MUIC:
 	case ATTACHED_DEV_JIG_UART_OFF_MUIC:
 		if (new_dev != ATTACHED_DEV_JIG_UART_OFF_MUIC) {
 			printk(KERN_DEBUG "[muic] %s new(%d)!=attached(%d)\n",
@@ -1468,7 +1485,13 @@ static void s2mm001_muic_handle_attach(struct s2mm001_muic_data *muic_data,
 		if (new_dev != muic_data->attached_dev) {
 			printk(KERN_DEBUG "[muic] %s new(%d)!=attached(%d)\n",
 				__func__, new_dev, muic_data->attached_dev);
-			ret = detach_deskdock(muic_data);
+
+			if(muic_data->is_factory_start)
+				ret = detach_deskdock(muic_data);
+			else {
+				noti = false;
+				ret = dettach_jig_uart_boot_on(muic_data);
+			}
 		}
 		break;
 	default:
@@ -1476,8 +1499,12 @@ static void s2mm001_muic_handle_attach(struct s2mm001_muic_data *muic_data,
 	}
 
 #if defined(CONFIG_MUIC_NOTIFIER)
-	if (noti)
-		muic_notifier_detach_attached_dev(muic_data->attached_dev);
+	if (noti) {
+		if (!muic_data->suspended)
+			muic_notifier_detach_attached_dev(muic_data->attached_dev);
+		else
+			muic_data->need_to_noti = true;
+	}
 #endif /* CONFIG_MUIC_NOTIFIER */
 
 	switch (new_dev) {
@@ -1492,25 +1519,26 @@ static void s2mm001_muic_handle_attach(struct s2mm001_muic_data *muic_data,
 		ret = attach_audiodock(muic_data, new_dev, vbvolt);
 		break;
 	case ATTACHED_DEV_TA_MUIC:
+	case ATTACHED_DEV_UNDEFINED_CHARGING_MUIC:
 		com_to_open_with_vbus(muic_data);
 		ret = attach_charger(muic_data, new_dev);
 		break;
+	case ATTACHED_DEV_JIG_UART_OFF_VB_OTG_MUIC:
+	case ATTACHED_DEV_JIG_UART_OFF_VB_FG_MUIC:
+	case ATTACHED_DEV_JIG_UART_OFF_VB_MUIC:
 	case ATTACHED_DEV_JIG_UART_OFF_MUIC:
-		if (vbvolt) {
-			if (muic_data->is_otg_test)
-				new_dev = ATTACHED_DEV_JIG_UART_OFF_VB_OTG_MUIC;
-			else
-				new_dev = ATTACHED_DEV_JIG_UART_OFF_VB_FG_MUIC;
-		} else
-			new_dev = ATTACHED_DEV_JIG_UART_OFF_MUIC;
-
 		muic_data->is_jig_on = true;
 		ret = attach_jig_uart_boot_off(muic_data, new_dev);
 		break;
 	case ATTACHED_DEV_JIG_UART_ON_MUIC:
 		/* call attach_deskdock to wake up the device */
 		muic_data->is_jig_on = true;
-		ret = attach_deskdock(muic_data, new_dev, vbvolt);
+		if(muic_data->is_factory_start)
+			ret = attach_deskdock(muic_data, new_dev, vbvolt);
+		else {
+			noti = false;
+			ret = attach_jig_uart_boot_on(muic_data, new_dev);
+		}
 		break;
 	case ATTACHED_DEV_JIG_USB_OFF_MUIC:
 		muic_data->is_jig_on = true;
@@ -1543,8 +1571,12 @@ static void s2mm001_muic_handle_attach(struct s2mm001_muic_data *muic_data,
 			__func__, new_dev, ret);
 
 #if defined(CONFIG_MUIC_NOTIFIER)
-	if (noti)
-		muic_notifier_attach_attached_dev(new_dev);
+	if (noti) {
+		if (!muic_data->suspended)
+			muic_notifier_attach_attached_dev(new_dev);
+		else
+			muic_data->need_to_noti = true;
+	}
 #endif /* CONFIG_MUIC_NOTIFIER */
 }
 
@@ -1566,15 +1598,23 @@ static void s2mm001_muic_handle_detach(struct s2mm001_muic_data *muic_data)
 		ret = detach_otg_usb(muic_data);
 		break;
 	case ATTACHED_DEV_TA_MUIC:
+	case ATTACHED_DEV_UNDEFINED_CHARGING_MUIC:
 		ret = detach_charger(muic_data);
 		break;
+	case ATTACHED_DEV_JIG_UART_OFF_VB_OTG_MUIC:
+	case ATTACHED_DEV_JIG_UART_OFF_VB_FG_MUIC:
 	case ATTACHED_DEV_JIG_UART_OFF_VB_MUIC:
 	case ATTACHED_DEV_JIG_UART_OFF_MUIC:
 		ret = detach_jig_uart_boot_off(muic_data);
 		break;
 	case ATTACHED_DEV_JIG_UART_ON_MUIC:
 	case ATTACHED_DEV_DESKDOCK_MUIC:
-		ret = detach_deskdock(muic_data);
+		if(muic_data->is_factory_start)
+			ret = detach_deskdock(muic_data);
+		else {
+			noti = false;
+			ret = dettach_jig_uart_boot_on(muic_data);
+		}
 		break;
 	case ATTACHED_DEV_AUDIODOCK_MUIC:
 		ret = detach_audiodock(muic_data);
@@ -1599,10 +1639,13 @@ static void s2mm001_muic_handle_detach(struct s2mm001_muic_data *muic_data)
 			__func__, muic_data->attached_dev, ret);
 
 #if defined(CONFIG_MUIC_NOTIFIER)
-	if (noti)
-		muic_notifier_detach_attached_dev(muic_data->attached_dev);
+	if (noti) {
+		if (!muic_data->suspended)
+			muic_notifier_detach_attached_dev(muic_data->attached_dev);
+		else
+			muic_data->need_to_noti = true;
+	}
 #endif /* CONFIG_MUIC_NOTIFIER */
-
 }
 
 static void s2mm001_muic_detect_dev(struct s2mm001_muic_data *muic_data)
@@ -1611,44 +1654,43 @@ static void s2mm001_muic_detect_dev(struct s2mm001_muic_data *muic_data)
 	muic_attached_dev_t new_dev = ATTACHED_DEV_UNKNOWN_MUIC;
 	int intr = MUIC_INTR_DETACH;
 	int vbvolt = 0;
-	int val1, val2, val3, adc;
-	u8 chg_en, man_sw;
+	int val1 = 0, val2 = 0, val3 = 0, adc = 0;
 
 	val1 = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_DEV_T1);
-	if (val1 < 0)
-		printk(KERN_ERR "[muic] %s err val1(%d)\n",
-			__func__, val1);
-
 	val2 = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_DEV_T2);
-	if (val2 < 0)
-		printk(KERN_ERR "[muic] %s err val2(%d)\n",
-			__func__, val2);
-
 	val3 = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_DEV_T3);
-	if (val3 < 0)
-		printk(KERN_ERR "[muic] %s err val3(%d)\n",
-			__func__, val3);
-
-	vbvolt = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_DEV_T3);
-	vbvolt &= RSVD1_VBUS;
+	adc = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_ADC);
+	vbvolt = !!(val3 & DEV_TYPE3_VBUS);
 	if (vbvolt) {
+		u8 man_sw = 0;
+		if (adc != 0x1f)
+			muic_data->attach_skip = true;
 		msleep(300);
-		chg_en = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_MANSW1);
-		man_sw = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_CTRL);
-		printk(KERN_DEBUG "[muic] chg_en : 0x%x, man_sw : 0x%x\n",
-			chg_en, man_sw);
-		chg_en |= 0x01 << 1;
-		s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_MANSW1, chg_en);
+		adc = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_ADC);
+		if (adc != ADC_JIG_UART_ON) {
+			man_sw = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_MANSW1);
+			man_sw |= MANUAL_SW1_CHARGER;
+			s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_MANSW1, man_sw);
+		}
 	}
 
-	adc = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_ADC);
 	printk(KERN_DEBUG
 		"[muic] dev[1:0x%x, 2:0x%x, 3:0x%x]"
 		", adc:0x%x, vbvolt:0x%x\n",
 		val1, val2, val3, adc, vbvolt);
 
+	if (ADC_CONVERSION_MASK & adc) {
+		printk(KERN_DEBUG "[muic] ADC conversion error!\n");
+		return ;
+	}
+
 	/* Attached */
 	switch (val1) {
+	case DEV_TYPE1_DEDICATED_CHG2:
+		intr = MUIC_INTR_ATTACH;
+		new_dev = ATTACHED_DEV_TA_MUIC;
+		printk(KERN_DEBUG "[muic] DEDICATED CHARGER DETECTED\n");
+		break;
 	case DEV_TYPE1_CDP:
 		intr = MUIC_INTR_ATTACH;
 		new_dev = ATTACHED_DEV_CDP_MUIC;
@@ -1675,6 +1717,14 @@ static void s2mm001_muic_detect_dev(struct s2mm001_muic_data *muic_data)
 		new_dev = ATTACHED_DEV_OTG_MUIC;
 		printk(KERN_DEBUG "[muic] USB_OTG DETECTED\n");
 		break;
+	case DEV_TYPE1_T1_T2_CHG:
+		intr = MUIC_INTR_ATTACH;
+		/* 200K, 442K should be checkef */
+		if (ADC_CEA936ATYPE2_CHG == adc)
+			new_dev = ATTACHED_DEV_TA_MUIC;
+		else
+			new_dev = ATTACHED_DEV_USB_MUIC;
+		break;
 	default:
 		break;
 	}
@@ -1682,7 +1732,13 @@ static void s2mm001_muic_detect_dev(struct s2mm001_muic_data *muic_data)
 	switch (val2) {
 	case DEV_TYPE2_JIG_UART_OFF:
 		intr = MUIC_INTR_ATTACH;
-		new_dev = ATTACHED_DEV_JIG_UART_OFF_MUIC;
+		if (vbvolt) {
+			if (muic_data->is_otg_test)
+				new_dev = ATTACHED_DEV_JIG_UART_OFF_VB_OTG_MUIC;
+			else
+				new_dev = ATTACHED_DEV_JIG_UART_OFF_VB_MUIC;
+		} else
+			new_dev = ATTACHED_DEV_JIG_UART_OFF_MUIC;
 		printk(KERN_DEBUG "[muic] JIG_UART_OFF DETECTED\n");
 		break;
 	case DEV_TYPE2_JIG_USB_OFF:
@@ -1699,11 +1755,20 @@ static void s2mm001_muic_detect_dev(struct s2mm001_muic_data *muic_data)
 		new_dev = ATTACHED_DEV_JIG_USB_ON_MUIC;
 		printk(KERN_DEBUG "[muic] JIG_USB_ON DETECTED\n");
 		break;
+
+	case DEV_TYPE2_JIG_UART_ON:
+		if (new_dev != ATTACHED_DEV_JIG_UART_ON_MUIC) {
+			intr = MUIC_INTR_ATTACH;
+			new_dev = ATTACHED_DEV_JIG_UART_ON_MUIC;
+			printk(KERN_DEBUG "[muic] ADC JIG_UART_ON DETECTED\n");
+		}
+		break;
 	default:
 		break;
 	}
 
-	if (val3 & DEV_TYPE3_CHG_TYPE) {
+	if ((val3 & DEV_TYPE3_CHG_TYPE) &&
+		(new_dev == ATTACHED_DEV_UNKNOWN_MUIC)) {
 		intr = MUIC_INTR_ATTACH;
 		new_dev = ATTACHED_DEV_TA_MUIC;
 		printk(KERN_DEBUG "[muic] TYPE3_CHARGER DETECTED\n");
@@ -1712,8 +1777,10 @@ static void s2mm001_muic_detect_dev(struct s2mm001_muic_data *muic_data)
 	if (val2 & DEV_TYPE2_AV || val3 & DEV_TYPE3_AV_WITH_VBUS) {
 #ifdef CONFIG_MUIC_S2MM001_SUPPORT_DESKDOCK
 		intr = MUIC_INTR_ATTACH;
-#endif
 		new_dev = ATTACHED_DEV_DESKDOCK_MUIC;
+#else
+		new_dev = ATTACHED_DEV_UNKNOWN_MUIC;
+#endif
 		printk(KERN_DEBUG "[muic] DESKDOCK DETECTED\n");
 	}
 
@@ -1722,14 +1789,12 @@ static void s2mm001_muic_detect_dev(struct s2mm001_muic_data *muic_data)
 	if (new_dev == ATTACHED_DEV_UNKNOWN_MUIC) {
 		switch (adc) {
 		case ADC_CEA936ATYPE1_CHG: /*200k ohm */
-#ifdef CONFIG_MUIC_S2MM001_200K_USB
 			intr = MUIC_INTR_ATTACH;
 			/* This is workaournd for LG USB cable
 					which has 219k ohm ID */
 			new_dev = ATTACHED_DEV_USB_MUIC;
 			printk(KERN_DEBUG "[muic] TYPE1 CHARGER DETECTED(USB)\n");
 			break;
-#endif
 		case ADC_CEA936ATYPE2_CHG:
 			intr = MUIC_INTR_ATTACH;
 			new_dev = ATTACHED_DEV_TA_MUIC;
@@ -1754,17 +1819,18 @@ static void s2mm001_muic_detect_dev(struct s2mm001_muic_data *muic_data)
 			}
 			break;
 		case ADC_JIG_UART_OFF:
-			if (new_dev != ATTACHED_DEV_JIG_UART_OFF_MUIC) {
-				intr = MUIC_INTR_ATTACH;
+			intr = MUIC_INTR_ATTACH;
+			if (vbvolt) {
+				if (muic_data->is_otg_test)
+					new_dev = ATTACHED_DEV_JIG_UART_OFF_VB_OTG_MUIC;
+				else
+					new_dev = ATTACHED_DEV_JIG_UART_OFF_VB_MUIC;
+			} else
 				new_dev = ATTACHED_DEV_JIG_UART_OFF_MUIC;
-				printk(KERN_DEBUG "[muic] ADC JIG_UART_OFF DETECTED\n");
-			}
+			printk(KERN_DEBUG "[muic] ADC JIG_UART_OFF DETECTED\n");
 			break;
 		case ADC_JIG_UART_ON:
-			/* This is the mode to wake up device
-						during factory mode. */
-			if (new_dev != ATTACHED_DEV_JIG_UART_ON_MUIC
-					&& muic_data->is_factory_start) {
+			if (new_dev != ATTACHED_DEV_JIG_UART_ON_MUIC) {
 				intr = MUIC_INTR_ATTACH;
 				new_dev = ATTACHED_DEV_JIG_UART_ON_MUIC;
 				printk(KERN_DEBUG "[muic] ADC JIG_UART_ON DETECTED\n");
@@ -1777,8 +1843,8 @@ static void s2mm001_muic_detect_dev(struct s2mm001_muic_data *muic_data)
 		case ADC_AUDIODOCK:
 #ifdef CONFIG_MUIC_S2MM001_SUPPORT_AUDIODOCK
 			intr = MUIC_INTR_ATTACH;
-#endif
 			new_dev = ATTACHED_DEV_AUDIODOCK_MUIC;
+#endif
 			printk(KERN_DEBUG "[muic] ADC AUDIODOCK DETECTED\n");
 			break;
 		case ADC_OPEN:
@@ -1794,15 +1860,18 @@ static void s2mm001_muic_detect_dev(struct s2mm001_muic_data *muic_data)
 		default:
 			printk(KERN_DEBUG "[muic] %s unsupported ADC(0x%02x)\n",
 				__func__, adc);
-			if (vbvolt) {
-				intr = MUIC_INTR_ATTACH;
-				new_dev = ATTACHED_DEV_UNKNOWN_MUIC;
-				printk(KERN_DEBUG "[muic] UNDEFINED VB DETECTED\n");
-			} else {
-				intr = MUIC_INTR_DETACH;
-			}
 			break;
 		}
+	}
+
+	if ((ATTACHED_DEV_UNKNOWN_MUIC == new_dev)
+		&& (ADC_OPEN != adc)) {
+		if (vbvolt) {
+			intr = MUIC_INTR_ATTACH;
+			new_dev = ATTACHED_DEV_UNDEFINED_CHARGING_MUIC;
+			printk(KERN_DEBUG "[muic] UNDEFINED VB DETECTED\n");
+		} else
+			intr = MUIC_INTR_DETACH;
 	}
 
 	if (intr == MUIC_INTR_ATTACH)
@@ -1811,7 +1880,7 @@ static void s2mm001_muic_detect_dev(struct s2mm001_muic_data *muic_data)
 		s2mm001_muic_handle_detach(muic_data);
 
 #if defined(CONFIG_VBUS_NOTIFIER)
-	vbus_notifier_handle(!!vbvolt ? STATUS_VBUS_HIGH : STATUS_VBUS_LOW);
+	vbus_notifier_handle((!!vbvolt) ? STATUS_VBUS_HIGH : STATUS_VBUS_LOW);
 #endif /* CONFIG_VBUS_NOTIFIER */
 
 }
@@ -1820,128 +1889,56 @@ static int s2mm001_muic_reg_init(struct s2mm001_muic_data *muic_data)
 {
 	struct i2c_client *i2c = muic_data->i2c;
 	int ret;
-	int ctrl = CTRL_MASK;
-	u8 chg_en, man_sw = 0;
 	int val1, val2, val3, adc;
-	int vbvolt = 0;
 
 	printk(KERN_DEBUG "[muic] %s\n", __func__);
 
-	ret = s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_INTMASK1,
+	ret = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_DEVID);
+	if (ret == 0x18)
+		muic_data->rev_id = 2;
+	else
+		muic_data->rev_id = 0;
+
+	ret = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_RESERVED);
+	ret &= ~(0x01 << 2);
+	s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_RESERVED, ret);
+
+	ret = s2mm001_i2c_write_byte(i2c,
+			S2MM001_MUIC_REG_INTMASK1,
 			REG_INTMASK1_VALUE);
 	if (ret < 0)
-		printk(KERN_ERR "[muic] %s: err mask interrupt1(%d)\n",
-			__func__, ret);
+		printk(KERN_ERR "[muic] failed to write intmask1(%d)\n", ret);
 
-	ret = s2mm001_i2c_write_byte(i2c, 0x2B, 0x00);
-
-	ret = s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_INTMASK2,
+	ret = s2mm001_i2c_write_byte(i2c,
+			S2MM001_MUIC_REG_INTMASK2,
 			REG_INTMASK2_VALUE);
 	if (ret < 0)
-		printk(KERN_ERR "[muic] %s: err mask interrupt2(%d)\n",
-			__func__, ret);
+		printk(KERN_ERR "[muic] failed to write intmask2(%d)\n", ret);
 
-#ifdef CONFIG_MUIC_S2MM001_ENABLE_AUTOSW
-	/* set AUTO SW mode */
-	/* enable AUTO Switch for devices with internal battery */
-#ifdef CONFIG_MACH_DEGAS
-	/* System rev less than 0.1 cannot use Auto switch mode in DEGAS */
-	if (system_rev >= 0x1)
-#endif
-		ctrl |= CTRL_MANUAL_SW_MASK;
-#endif
-
-	ret = s2mm001_i2c_guaranteed_wbyte(i2c, S2MM001_MUIC_REG_CTRL, ctrl);
+	ret = s2mm001_i2c_write_byte(i2c,
+			S2MM001_MUIC_REG_TIMING1,
+			REG_TIMING1_VALUE);
 	if (ret < 0)
-		printk(KERN_ERR "[muic] %s: err ctrl(%d)\n",
-			__func__, ret);
-
-	ret = s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_TIMING1,
-						REG_TIMING1_VALUE);
-	if (ret < 0)
-		printk(KERN_ERR "[muic] %s: err timing1(%d)\n",
-			__func__, ret);
+		printk(KERN_ERR "[muic] failed to write timing1(%d)\n", ret);
 
 	val1 = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_DEV_T1);
-	if (val1 < 0)
-		printk(KERN_ERR "[muic] %s err val1(%d)\n",
-			__func__, val1);
-
 	val2 = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_DEV_T2);
-	if (val2 < 0)
-		printk(KERN_ERR "[muic] %s err val2(%d)\n",
-			__func__, val2);
-
 	val3 = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_DEV_T3);
-	if (val3 < 0)
-		printk(KERN_ERR "[muic] %s err val3(%d)\n",
-			__func__, val3);
-
 	adc = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_ADC);
-	if (val3 < 0)
-		printk(KERN_ERR "[muic] %s err adc(%d)\n",
-			__func__, adc);
-
 	printk(KERN_DEBUG
 		"[muic] dev[1:0x%x, 2:0x%x, 3:0x%x], adc:0x%x\n",
 		val1, val2, val3, adc);
 
-	if (!val1 && !val2 && !val3 && (adc == 0x1f)) {
-		chg_en = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_MANSW1);
-		printk(KERN_DEBUG "[muic] chg_en : 0x%x\n", chg_en);
-		chg_en &= ~(0x01 << 1);
-		s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_MANSW1, chg_en);
-	} else if ((val1 & DEV_TYPE1_USB_TYPES) ||
-			(val2 & DEV_TYPE2_JIG_USB_TYPES) ||
-			(val3 & DEV_TYPE3_NO_STD_CHG)) {
-		ret = s2mm001_i2c_write_byte(i2c,
-			S2MM001_MUIC_REG_MANSW1, 0x26);
-		if (ret < 0)
-			printk(KERN_ERR "[muic] %s usb type detect err %d\n",
-				__func__, ret);
-	}
-
-	if (val2 & DEV_TYPE2_JIG_UART_TYPES) {
-		ret = s2mm001_i2c_write_byte(i2c,
-			S2MM001_MUIC_REG_MANSW1, 0x6e);
-		if (ret < 0)
-			printk(KERN_ERR "[muic] %s uart type detect err %d\n",
-				__func__, ret);
-	}
-	vbvolt = val3 & RSVD1_VBUS;
-	if (vbvolt) {
-		man_sw = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_MANSW1);
-		man_sw |= MANUAL_SW1_V_CHARGER;
-		ret = s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_MANSW1,
-						man_sw);
-		if (ret < 0)
-			printk(KERN_ERR "[muic] %s: err write MANSW1(%d)\n",
-				__func__, ret);
-	}
-
-	mdelay(100);
-
-#ifdef CONFIG_MUIC_S2MM001_ENABLE_AUTOSW
-	/* set AUTO SW mode */
-	/* enable AUTO Switch for devices with internal battery */
-#ifdef CONFIG_MACH_DEGAS
-	/* System rev less than 0.1 cannot use Auto switch mode in DEGAS */
-	if (system_rev >= 0x1)
-#endif
-		ctrl |= CTRL_MANUAL_SW_MASK;
-#endif
-
-	ret = s2mm001_i2c_guaranteed_wbyte(i2c, S2MM001_MUIC_REG_CTRL, ctrl);
+	ret = s2mm001_i2c_guaranteed_wbyte(i2c,
+			S2MM001_MUIC_REG_CTRL, CTRL_MASK);
 	if (ret < 0)
-		printk(KERN_ERR "[muic] %s: err write ctrl(%d)\n",
-			__func__, ret);
+		printk(KERN_ERR "[muic] failed to write ctrl(%d)\n", ret);
 
 	/* enable ChargePump */
 	ret = s2mm001_i2c_write_byte(i2c, S2MM001_MUIC_REG_CTRL2,
-						RSVD3_CHGPUMP_nEN);
+			RSVD3_CHGPUMP_EN);
 	if (ret < 0)
-		printk(KERN_ERR "[muic] %s: err write ctrl(%d)\n",
-			__func__, ret);
+		printk(KERN_ERR "[muic] failed to write ctrl2(%d)\n", ret);
 
 	return ret;
 }
@@ -1952,24 +1949,23 @@ static irqreturn_t s2mm001_muic_irq_thread(int irq, void *data)
 	struct i2c_client *i2c = muic_data->i2c;
 	int intr1, intr2;
 
-	printk(KERN_DEBUG "[muic] %s irq(%d)\n", __func__, irq);
-
 	mutex_lock(&muic_data->muic_mutex);
+	wake_lock(&muic_data->wake_lock);
 
 	/* read and clear interrupt status bits */
 	intr1 = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_INT1);
 	intr2 = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_INT2);
-
 	if ((intr1 < 0) || (intr2 < 0)) {
-		printk(KERN_ERR "[muic] %s: err read int[1:0x%x, 2:0x%x]\n",
+		printk(KERN_ERR "[muic] %s: failed to read int[1:0x%x, 2:0x%x]\n",
 			__func__, intr1, intr2);
+		muic_data->attach_skip = false;
 		goto skip_detect_dev;
 	}
 
 	if (intr1 & INT_ATTACH_MASK) {
 		int intr_tmp;
 		intr_tmp = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_INT1);
-		if (intr_tmp & 0x2) {
+		if (intr_tmp & INT_DETACH_MASK) {
 			printk(KERN_DEBUG "[muic] attach/detach interrupt occurred\n");
 			intr1 &= 0xFE;
 		}
@@ -1979,25 +1975,37 @@ static irqreturn_t s2mm001_muic_irq_thread(int irq, void *data)
 	if (intr2 & INT_CHG_DET_MASK)
 		queue_delayed_work(muic_data->muic_wqueue,
 			&muic_data->usb_work, msecs_to_jiffies(1000));
-	if (intr1 & INT_DETACH_MASK)
-		muic_data->sdp_skip = false;
 
-	printk(KERN_DEBUG "[muic] intr[1:0x%x, 2:0x%x]\n",
-		intr1, intr2);
+	if (intr1 & INT_DETACH_MASK) {
+		muic_data->sdp_skip = false;
+		if (intr1 & INT_ATTACH_MASK) {
+			muic_data->attach_skip = false;
+			if (muic_data->attached_dev == ATTACHED_DEV_JIG_UART_ON_MUIC) {
+				dettach_jig_uart_boot_on(muic_data);
+				goto skip_detect_dev;
+			}
+			if (muic_data->attach_skip) {
+				s2mm001_muic_handle_detach(muic_data);
+				goto skip_detect_dev;
+			}
+		}
+	}
+
+	muic_data->attach_skip = false;
+
+	printk(KERN_DEBUG "[muic] intr[0x%x, 0x%x]\n", intr1, intr2);
 
 	/* check for muic reset and recover for every interrupt occurred */
-	if (intr1 & INT_OVP_EN_MASK) {
-		int ctrl;
-		ctrl = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_CTRL);
+	if ((intr1 & INT_OVP_EN_MASK) ||
+		((intr1 == 0x0) && (intr2 == 0x0) && (irq != -1))) {
+		int ctrl = s2mm001_i2c_read_byte(i2c, S2MM001_MUIC_REG_CTRL);
 		if (ctrl == 0x1F) {
 			/* CONTROL register is reset to 1F */
 #ifdef DEBUG_MUIC
 			s2mm001_print_reg_log();
 			s2mm001_print_reg_dump(muic_data);
 #endif
-			printk(KERN_ERR
-				"[muic] %s: err muic could have been reseted. Initilize!!\n",
-				__func__);
+			printk(KERN_ERR "[muic] OVP is occured!!\n");
 			s2mm001_muic_reg_init(muic_data);
 #ifdef DEBUG_MUIC
 			s2mm001_print_reg_dump(muic_data);
@@ -2014,6 +2022,7 @@ static irqreturn_t s2mm001_muic_irq_thread(int irq, void *data)
 	s2mm001_muic_detect_dev(muic_data);
 
 skip_detect_dev:
+	wake_unlock(&muic_data->wake_lock);
 	mutex_unlock(&muic_data->muic_mutex);
 
 	return IRQ_HANDLED;
@@ -2034,19 +2043,6 @@ static void s2mm001_muic_usb_check(struct work_struct *work)
 		muic_data->sdp_skip = true;
 }
 
-static void s2mm001_muic_init_detect(struct work_struct *work)
-{
-	struct s2mm001_muic_data *muic_data =
-		container_of(work, struct s2mm001_muic_data, init_work.work);
-
-	printk(KERN_DEBUG "[muic] %s\n", __func__);
-
-	/* MUIC Interrupt On */
-	set_int_mask(muic_data, false);
-
-	s2mm001_muic_irq_thread(-1, muic_data);
-}
-
 static int s2mm001_init_rev_info(struct s2mm001_muic_data *muic_data)
 {
 	u8 dev_id;
@@ -2056,14 +2052,13 @@ static int s2mm001_init_rev_info(struct s2mm001_muic_data *muic_data)
 
 	dev_id = s2mm001_i2c_read_byte(muic_data->i2c, S2MM001_MUIC_REG_DEVID);
 	if (dev_id < 0) {
-		printk(KERN_ERR "[muic] %s i2c io error(%d)\n",
-			__func__, ret);
+		printk(KERN_ERR "[muic] %s(%d)\n", __func__, dev_id);
 		ret = -ENODEV;
 	} else {
 		muic_data->muic_vendor = (dev_id & 0x7);
 		muic_data->muic_version = ((dev_id & 0xF8) >> 3);
 		printk(KERN_DEBUG
-			"[muic] %s device found: vendor=0x%x, ver=0x%x\n",
+			"[muic] %s : vendor=0x%x, ver=0x%x\n",
 			__func__, muic_data->muic_vendor,
 			muic_data->muic_version);
 	}
@@ -2086,7 +2081,6 @@ static int s2mm001_muic_irq_init(struct s2mm001_muic_data *muic_data)
 	}
 
 	i2c->irq = gpio_to_irq(pdata->irq_gpio);
-
 	if (i2c->irq) {
 		ret = request_threaded_irq(i2c->irq, NULL,
 				s2mm001_muic_irq_thread,
@@ -2119,11 +2113,11 @@ static int of_s2mm001_muic_dt(struct device *dev,
 		printk(KERN_ERR "[muic] %s np NULL\n", __func__);
 		return -EINVAL;
 	} else {
-		muic_data->pdata->irq_gpio = of_get_named_gpio(np_muic,
-							"muic,muic_int", 0);
+		muic_data->pdata->irq_gpio =
+			of_get_named_gpio(np_muic, "muic,muic_int", 0);
 		if (muic_data->pdata->irq_gpio < 0) {
-			printk(KERN_ERR "[muic] %s error reading muic_irq = %d\n", __func__,
-						muic_data->pdata->irq_gpio);
+			printk(KERN_ERR "[muic] %s failed to get muic_irq = %d\n",
+				__func__, muic_data->pdata->irq_gpio);
 			muic_data->pdata->irq_gpio = 0;
 		}
 		if (of_gpio_count(np_muic) < 1) {
@@ -2189,6 +2183,7 @@ static int s2mm001_muic_probe(struct i2c_client *i2c,
 	muic_data->attached_dev = ATTACHED_DEV_UNKNOWN_MUIC;
 	muic_data->is_usb_ready = false;
 	muic_data->sdp_skip = false;
+	muic_data->attach_skip = false;
 
 #ifdef CONFIG_SEC_SYSFS
 	/* create sysfs group */
@@ -2212,18 +2207,23 @@ static int s2mm001_muic_probe(struct i2c_client *i2c,
 		goto fail;
 	}
 
+#if 0
 	ret = s2mm001_i2c_read_byte(muic_data->i2c, S2MM001_MUIC_REG_MANSW1);
 	if (ret < 0)
 		printk(KERN_ERR "[muic] %s: err mansw1 (%d)\n", __func__, ret);
-
-	/* RUSTPROOF : disable UART connection if MANSW1
-		from BL is OPEN_RUSTPROOF */
-	if (ret == MANSW1_OPEN_RUSTPROOF) {
-		muic_data->is_rustproof = true;
-		com_to_open_with_vbus(muic_data);
-	} else {
-		muic_data->is_rustproof = false;
+	else {
+		/* RUSTPROOF : disable UART connection if MANSW1
+			from BL is OPEN_RUSTPROOF */
+		if (ret == MANSW_OPEN_RUSTPROOF) {
+			muic_data->is_rustproof = true;
+			com_to_open_with_vbus(muic_data);
+		} else {
+			muic_data->is_rustproof = false;
+		}
 	}
+#else
+	muic_data->is_rustproof = muic_data->pdata->rustproof_on;
+#endif
 
 	if (muic_data->pdata->init_switch_dev_cb)
 		muic_data->pdata->init_switch_dev_cb();
@@ -2234,13 +2234,15 @@ static int s2mm001_muic_probe(struct i2c_client *i2c,
 		goto fail_init_irq;
 	}
 
+	wake_lock_init(&muic_data->wake_lock, WAKE_LOCK_SUSPEND, "muic_wake");
 	muic_data->muic_wqueue =
 		create_singlethread_workqueue(dev_name(muic_data->dev));
 
-	/* initial cable detection */
-	INIT_DELAYED_WORK(&muic_data->init_work, s2mm001_muic_init_detect);
-	schedule_delayed_work(&muic_data->init_work, msecs_to_jiffies(500));
 	INIT_DELAYED_WORK(&muic_data->usb_work, s2mm001_muic_usb_check);
+
+	/* initial cable detection */
+	set_int_mask(muic_data, false);
+	s2mm001_muic_irq_thread(-1, muic_data);
 
 	return 0;
 
@@ -2268,7 +2270,6 @@ static int s2mm001_muic_remove(struct i2c_client *i2c)
 
 	if (muic_data) {
 		printk(KERN_DEBUG "[muic] %s\n", __func__);
-		cancel_delayed_work(&muic_data->init_work);
 		cancel_delayed_work(&muic_data->usb_work);
 		disable_irq_wake(muic_data->i2c->irq);
 		free_irq(muic_data->i2c->irq, muic_data);
@@ -2311,6 +2312,33 @@ static void s2mm001_muic_shutdown(struct i2c_client *i2c)
 	}
 }
 
+static int s2mm001_muic_suspend(struct i2c_client *client,
+	pm_message_t mesg)
+{
+	struct s2mm001_muic_data *muic_data = i2c_get_clientdata(client);
+
+	muic_data->suspended = true;
+
+	return 0;
+}
+
+static int s2mm001_muic_resume(struct i2c_client *client)
+{
+	struct s2mm001_muic_data *muic_data = i2c_get_clientdata(client);
+
+	muic_data->suspended = false;
+
+	if (muic_data->need_to_noti) {
+		if (muic_data->attached_dev)
+			muic_notifier_attach_attached_dev(muic_data->attached_dev);
+		else
+			muic_notifier_detach_attached_dev(muic_data->attached_dev);
+		muic_data->need_to_noti = false;
+	}
+
+	return 0;
+}
+
 #if defined(CONFIG_OF)
 static struct of_device_id sec_muic_i2c_dt_ids[] = {
 	{ .compatible = "sec-muic,i2c" },
@@ -2325,6 +2353,8 @@ static struct i2c_driver s2mm001_muic_driver = {
 		.of_match_table = of_match_ptr(sec_muic_i2c_dt_ids),
 	},
 	.probe = s2mm001_muic_probe,
+	.suspend = s2mm001_muic_suspend,
+	.resume = s2mm001_muic_resume,
 	.remove = __devexit_p(s2mm001_muic_remove),
 	.shutdown = s2mm001_muic_shutdown,
 	.id_table	= s2mm001_i2c_id,

@@ -54,7 +54,6 @@ struct max77888_haptic_platform_data {
 	void (*init_hw) (void);
 	void (*motor_en) (bool);
 };
-
 struct max77888_regulator_data {
 	int id;
 	struct regulator_init_data *initdata;
@@ -73,6 +72,7 @@ struct max77888_platform_data {
 	int num_regulators;
 	struct max77888_regulator_data *regulators;
 #if 0	//temp
+	/* haptic motor data */
 	struct max77888_haptic_platform_data *haptic_data;
 #endif
 #if defined(CONFIG_CHARGER_MAX77888)

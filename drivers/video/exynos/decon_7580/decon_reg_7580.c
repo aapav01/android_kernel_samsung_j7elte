@@ -276,24 +276,21 @@ u32 decon_reg_get_stop_status(u32 id)
 
 int decon_reg_wait_stop_status_timeout(u32 id, unsigned long timeout)
 {
-	unsigned long delay_time = 100;
+	unsigned long delay_time = 10;
 	unsigned long cnt = timeout / delay_time;
-	struct decon_device *decon = get_decon_drvdata(id);
+	u32 status;
 
-	while ((decon_read(id, DECON_UPDATE) & DECON_UPDATE_STANDALONE_F) &&
-				--cnt) {
-		if (decon->pdata->psr_mode == DECON_MIPI_COMMAND_MODE) {
-			if (decon->ignore_vsync)
-				goto wait_exit;
-		}
+	do {
+		status = decon_reg_get_stop_status(id);
+		cnt--;
 		udelay(delay_time);
-	}
+	} while (status && cnt);
+
 	if (!cnt) {
-		decon_err("timeout of updating decon registers\n");
+		decon_err("wait timeout decon stop status(%u)\n", status);
 		return -EBUSY;
 	}
 
-wait_exit:
 	return 0;
 }
 
@@ -349,6 +346,69 @@ void decon_reg_config_win_channel(u32 id, u32 win_idx,
 	decon_dbg("decon-%s win[%d]-type[%d] WINCHMAP:%#x\n", "int",
 			win_idx, type, decon_read(id, WINCHMAP0));
 }
+
+#if defined(CONFIG_EXYNOS_DECON_DPU)
+void decon_reg_enable_apb_clk(u32 id, u32 en)
+{
+	u32 val = en ? ~0 : 0;
+
+	decon_write_mask(id, ENHANCER_MIC_CTRL,
+			val, ENHANCER_MIC_CTRL_DPU_APB_CLK_GATE);
+}
+
+void decon_reg_set_pixel_count_se(u32 id, u32 width, u32 height)
+{
+	u32 val = width * height;
+
+	decon_write_mask(id, DPU_PIXEL_COUNT_SE, val, DPU_PIXEL_COUNT_SE_MASK);
+}
+
+void decon_reg_set_image_size_se(u32 id, u32 width, u32 height)
+{
+	u32 val = ((width - 1) << DPU_SE_HOZVAL_F)
+			| ((height-1) << DPU_SE_LINEVAL_F);
+
+	decon_write_mask(id, DPU_IMG_SIZE_SE, val, DPU_IMG_SIZE_SE_MASK);
+}
+
+void decon_reg_set_porch_se(u32 id, u32 vfp, u32 vsa, u32 vbp,
+					u32 hfp, u32 hsa, u32 hbp)
+{
+	u32 val = (vsa << DPU_SE_VSPW_F) | (vfp << DPU_SE_VFPD_F);
+
+	decon_write_mask(id, DPU_VTIME1_SE, val, DPU_VTIME1_SE_MASK);
+
+	val = vbp;
+
+	decon_write_mask(id, DPU_VTIME0_SE, val, DPU_VTIME0_SE_MASK);
+
+	val = (hsa << DPU_SE_HSPW_F) | (hfp << DPU_SE_HFPD_F);
+
+	decon_write_mask(id, DPU_HTIME1_SE, val, DPU_HTIME1_SE_MASK);
+
+	val = hbp;
+
+	decon_write_mask(id, DPU_HTIME0_SE, val, DPU_HTIME0_SE_MASK);
+}
+
+void decon_reg_set_bit_order_se(u32 id, u32 out_order, u32 in_order)
+{
+	u32 val = (out_order << 2) | (in_order << 0);
+
+	decon_write_mask(id, DPU_BIT_ORDER_SE, val, DPU_BIT_ORDER_SE_MASK);
+}
+
+void decon_reg_enable_dpu(u32 id, u32 en)
+{
+	u32 val = en ? ~0 : 0;
+
+	decon_write_mask(id, ENHANCER_MIC_CTRL,
+				val, ENHANCER_MIC_CTRL_DPU_ON_F);
+
+	decon_reg_update_standalone(id);
+}
+#endif
+
 
 /***************** CAL APIs implementation *******************/
 void decon_reg_init(u32 id, enum decon_dsi_mode dsi_mode,
@@ -539,6 +599,7 @@ void decon_enable_eclk_idle_gate(u32 id, enum decon_set_eclk_idle_gate en)
 void decon_reg_set_trigger(u32 id, enum decon_dsi_mode dsi_mode,
 			enum decon_trig_mode trig, enum decon_set_trig en)
 {
+	struct decon_device *decon = get_decon_drvdata(id);
 	u32 val = (en == DECON_TRIG_ENABLE) ? ~0 : 0;
 	u32 mask;
 
@@ -546,6 +607,8 @@ void decon_reg_set_trigger(u32 id, enum decon_dsi_mode dsi_mode,
 		mask = TRIGCON_SWTRIGCMD_I80_RGB;
 	else
 		mask = TRIGCON_HWTRIGMASK_DISPIF0;
+
+	decon->trigger_enable = val;
 	decon_write_mask(id, TRIGCON, val, mask);
 }
 
@@ -554,16 +617,22 @@ int decon_reg_wait_for_update_timeout(u32 id, unsigned long timeout)
 {
 	unsigned long delay_time = 100;
 	unsigned long cnt = timeout / delay_time;
+	struct decon_device *decon = get_decon_drvdata(id);
 
-	while ((decon_read(id, DECON_UPDATE) & DECON_UPDATE_STANDALONE_F) &&
-				--cnt)
+	while ((decon_read(id, DECON_UPDATE) & DECON_UPDATE_STANDALONE_F) && --cnt) {
+		if (decon->pdata->psr_mode == DECON_MIPI_COMMAND_MODE) {
+			if (decon->ignore_vsync)
+				goto wait_exit;
+		}
 		udelay(delay_time);
+	}
 
 	if (!cnt) {
 		decon_err("timeout of updating decon registers\n");
 		return -EBUSY;
 	}
 
+wait_exit:
 	return 0;
 }
 

@@ -134,8 +134,8 @@ u32 cal_get_freq(u32 id, s32 level)
 
 u32 cal_get_asv_grp(u32 id, s32 level)
 {
-	u32 asv_group = 0;
- 
+	u32 asv_group;
+
 	switch (id) {
 	case SYSC_DVFS_CPU:
 		asv_group = asv_bank0.apl0_grp;

@@ -1868,7 +1868,6 @@ static int addrconf_ifid_gre(u8 *eui, struct net_device *dev)
 static int ipv6_generate_eui64(u8 *eui, struct net_device *dev)
 {
 	pr_crit("%s: dev type: %d\n", __func__, dev->type);
-
 	switch (dev->type) {
 	case ARPHRD_ETHER:
 	case ARPHRD_FDDI:
@@ -2603,12 +2602,6 @@ static int inet6_addr_del(struct net *net, int ifindex, const struct in6_addr *p
 			read_unlock_bh(&idev->lock);
 
 			ipv6_del_addr(ifp);
-
-			/* If the last address is deleted administratively,
-			   disable IPv6 on this interface.
-			 */
-			if (list_empty(&idev->addr_list))
-				addrconf_ifdown(idev->dev, 1);
 			return 0;
 		}
 	}

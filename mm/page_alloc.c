@@ -110,9 +110,6 @@ unsigned long totalreserve_pages __read_mostly;
  */
 unsigned long dirty_balance_reserve __read_mostly;
 
-int percpu_pagelist_fraction;
-gfp_t gfp_allowed_mask __read_mostly = GFP_BOOT_MASK;
-
 static unsigned int boot_mode = 0;
 static int __init setup_bootmode(char *str)
 {
@@ -125,6 +122,9 @@ static int __init setup_bootmode(char *str)
 	return -EINVAL;
 }
 early_param("bootmode", setup_bootmode);
+
+int percpu_pagelist_fraction;
+gfp_t gfp_allowed_mask __read_mostly = GFP_BOOT_MASK;
 
 #ifdef CONFIG_PM_SLEEP
 /*

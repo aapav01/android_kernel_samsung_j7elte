@@ -50,7 +50,7 @@
 #define   TIMA_DEBUG_LOG_START  0x52300000
 #define   TIMA_DEBUG_LOG_SIZE   1<<18
 
-#define   TIMA_SEC_LOG          0x529f8000
+#define   TIMA_SEC_LOG          0x52400000
 #define   TIMA_SEC_LOG_SIZE     0x7000
 
 #define   TIMA_PHYS_MAP         0x4da00000
@@ -59,10 +59,10 @@
 #define   TIMA_SEC_TO_PGT       0x4e000000
 #define   TIMA_SEC_TO_PGT_SIZE  1<<20
 
-#define   TIMA_DASHBOARD_START  0x529ff000
+#define   TIMA_DASHBOARD_START  0x52407000
 #define   TIMA_DASHBOARD_SIZE    0x1000
 
-#define   TIMA_ROBUF_START      0x52400000
+#define   TIMA_ROBUF_START      0x52408000
 #define   TIMA_ROBUF_SIZE       0x5f8000 /* 6MB - RKP_SEC_LOG_SIZE - RKP_DASHBOARD_SIZE)*/
 
 #define RKP_RBUF_VA      (phys_to_virt(TIMA_ROBUF_START))
@@ -139,15 +139,17 @@ static inline u8 rkp_is_pg_protected(u64 va)
 	return val;
 }
 
-static inline u8 rkp_is_pg_dbl_mapped(u64 va)
+static inline u8 rkp_is_pg_dbl_mapped(u64 pa)
 {
-	u64 paddr = __pa(va) - PHYS_OFFSET;
+	u64 paddr = (pa&(0xFFFFFFFFFF)) - PHYS_OFFSET;
 	u64 index = (paddr>>PAGE_SHIFT);
 	u64 *p = (u64 *)rkp_map_bitmap;
 	u64 tmp = (index>>6);
 	u64 rindex;
 	u8 val;
 	
+	if(pa < PHYS_OFFSET || (long long)paddr < 0)
+		return 0;	
 	p += (tmp);
 	rindex = index % 64;
 	val = (((*p) & (1ULL<<rindex))?1:0);

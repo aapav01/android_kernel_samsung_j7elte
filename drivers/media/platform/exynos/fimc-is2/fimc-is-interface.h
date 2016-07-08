@@ -23,6 +23,7 @@
 #include "fimc-is-video.h"
 #include "fimc-is-time.h"
 #include "fimc-is-cmd.h"
+#include "fimc-is-config.h"
 
 /*#define TRACE_WORK*/
 /* cam_ctrl : 1
@@ -50,7 +51,6 @@
 #else
 #define TRY_TIMEOUT_COUNT	3
 #endif
-
 #define TRY_RECV_AWARE_COUNT	100
 
 #define LOWBIT_OF(num)	(num >= 32 ? 0 : (u32)1<<num)

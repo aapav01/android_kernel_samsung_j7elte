@@ -307,7 +307,7 @@ static int hid_synaptics_mapping(struct hid_device *hdev, struct hid_input *hi,
 {
 	int ret = 0;
 
-	if ((USB_DEVICE_ID_SAMSUNG_WIRELESS_BOOKCOVER == hdev->product) || (USB_DEVICE_ID_SAMSUNG_WIRELESS_BOOKCOVER_TABS2 == hdev->product))
+	if (USB_DEVICE_ID_SAMSUNG_WIRELESS_BOOKCOVER == hdev->product)
 		ret = samsung_bookcover_input_mapping(hdev,
 			hi, field, usage, bit, max);
 
@@ -316,8 +316,6 @@ static int hid_synaptics_mapping(struct hid_device *hdev, struct hid_input *hi,
 
 static const struct hid_device_id hid_synaptics_id[] = {
 	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_SAMSUNG_ELECTRONICS, USB_DEVICE_ID_SAMSUNG_WIRELESS_BOOKCOVER),
-		.driver_data = 0 },
-	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_SAMSUNG_ELECTRONICS, USB_DEVICE_ID_SAMSUNG_WIRELESS_BOOKCOVER_TABS2),
 		.driver_data = 0 },
 	{ HID_USB_DEVICE(0x06cb, 0x5555),
 		.driver_data = 0 },

@@ -204,6 +204,18 @@ config INPUT_FLIP_COVER
 	help
 	  Say Y here if you want to support flip cover for the input device.
 
+config SENSORS_HALL_IRQ_CTRL
+	tristate "Support flip cover irq control"
+	default n
+	help
+	  Say Y here if you want to support flip cover irq control.
+	  
+config CERTIFY_HALL
+	tristate "Enable CERTIFY HALL"
+	default n
+	help
+	  Enable Certify Hall Featur
+
 comment "Input Device Drivers"
 
 source "drivers/input/keyboard/Kconfig"

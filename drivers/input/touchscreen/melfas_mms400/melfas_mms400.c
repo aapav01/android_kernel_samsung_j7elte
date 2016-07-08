@@ -167,6 +167,9 @@ DONE:
  */
 int mms_enable(struct mms_ts_info *info)
 {
+#ifdef COVER_MODE
+	u8 wbuf[4];
+#endif
 	tsp_debug_info(true, &info->client->dev, "%s [START]\n", __func__);
 
 	if (info->enabled) {
@@ -192,6 +195,19 @@ int mms_enable(struct mms_ts_info *info)
 #ifdef CONFIG_VBUS_NOTIFIER
 	if (info->ta_stsatus)
 		mms_charger_attached(info, true);
+#endif
+#ifdef COVER_MODE
+	if(info->cover_mode){
+		tsp_debug_info(true, &info->client->dev, "%s clear_cover_mode on\n", __func__);
+
+		wbuf[0] = MIP_R0_CTRL;
+		wbuf[1] = MIP_R1_CTRL_WINDOW_MODE;
+		wbuf[2] = 3;
+
+		if (mms_i2c_write(info, wbuf, 3)) {
+			tsp_debug_err(true, &info->client->dev, "%s [ERROR] clear_cover_mode mms_i2c_write\n", __func__);
+		}
+	}
 #endif
 
 	tsp_debug_info(true, &info->client->dev, "%s [DONE]\n", __func__);
@@ -596,7 +612,7 @@ int mms_fw_update_from_kernel(struct mms_ts_info *info, bool force)
 {
 	const char *fw_name = info->dtdata->fw_name;
 	const struct firmware *fw;
-	int retires = 6;
+	int retires = 3;
 	int ret;
 
 	tsp_debug_info(true, &info->client->dev, "%s [START]\n", __func__);

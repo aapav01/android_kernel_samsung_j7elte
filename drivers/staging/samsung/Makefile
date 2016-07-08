@@ -12,6 +12,7 @@ obj-				:=
 
 # Samsung Battery
 obj-$(CONFIG_BATTERY_SAMSUNG)	+= sec_batt.o
+obj-$(CONFIG_BATTERY_SMART)	+= sec_batt.o
 
 # Samsung Logging Feature
 obj-$(CONFIG_SEC_EXT)		+= sec_log.o

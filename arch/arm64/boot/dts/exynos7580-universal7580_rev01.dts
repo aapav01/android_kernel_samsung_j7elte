@@ -850,7 +850,7 @@
 				};
 
 				ldo32_reg: LDO32 {
-					regulator-name = "VDD_VTCAM_1P8";
+					regulator-name = "VDDIO_1.8V_VT";
 					regulator-min-microvolt = <1800000>;
 					regulator-max-microvolt = <1800000>;
 					regulator-initial-mode = <1>;
@@ -1000,10 +1000,11 @@
 		#define DVFS_INT_L7 100000
 
 		#define DVFS_CAM_L0 530000
-		#define DVFS_CAM_L1 480000
-		#define DVFS_CAM_L2 430000
-		#define DVFS_CAM_L3 400000
-		#define DVFS_CAM_L4 200000
+		#define DVFS_CAM_L1 430000
+		#define DVFS_CAM_L2 400000
+		#define DVFS_CAM_L3 334000
+		#define DVFS_CAM_L4 267000
+		#define DVFS_CAM_L5 200000
 
 		#define DVFS_MIF_L0 825000
 		#define DVFS_MIF_L1 728000
@@ -1020,19 +1021,19 @@
 			default_mif = <DVFS_MIF_L0>;
 			default_i2c = <0>;
 
-			front_preview_int = <DVFS_INT_L0>;
-			front_preview_cam = <DVFS_CAM_L0>;
-			front_preview_mif = <DVFS_MIF_L0>;
+			front_preview_int = <DVFS_INT_L3>;
+			front_preview_cam = <DVFS_CAM_L4>;
+			front_preview_mif = <DVFS_MIF_L3>;
 			front_preview_i2c = <0>;
 
-			front_capture_int = <DVFS_INT_L0>;
-			front_capture_cam = <DVFS_CAM_L0>;
-			front_capture_mif = <DVFS_MIF_L0>;
+			front_capture_int = <DVFS_INT_L3>;
+			front_capture_cam = <DVFS_CAM_L4>;
+			front_capture_mif = <DVFS_MIF_L3>;
 			front_capture_i2c = <0>;
 
-			front_video_int = <DVFS_INT_L0>;
-			front_video_cam = <DVFS_CAM_L0>;
-			front_video_mif = <DVFS_MIF_L0>;
+			front_video_int = <DVFS_INT_L3>;
+			front_video_cam = <DVFS_CAM_L4>;
+			front_video_mif = <DVFS_MIF_L3>;
 			front_video_i2c = <0>;
 
 			front_video_whd_int = <DVFS_INT_L0>;
@@ -1040,9 +1041,9 @@
 			front_video_whd_mif = <DVFS_MIF_L0>;
 			front_video_whd_i2c = <0>;
 
-			front_video_capture_int = <DVFS_INT_L0>;
-			front_video_capture_cam = <DVFS_CAM_L0>;
-			front_video_capture_mif = <DVFS_MIF_L0>;
+			front_video_capture_int = <DVFS_INT_L3>;
+			front_video_capture_cam = <DVFS_CAM_L4>;
+			front_video_capture_mif = <DVFS_MIF_L3>;
 			front_video_capture_i2c = <0>;
 
 			front_video_whd_capture_int = <DVFS_INT_L0>;
@@ -1050,19 +1051,19 @@
 			front_video_whd_capture_mif = <DVFS_MIF_L0>;
 			front_video_whd_capture_i2c = <0>;
 
-			front_vt1_int = <DVFS_INT_L0>;
-			front_vt1_cam = <DVFS_CAM_L0>;
-			front_vt1_mif = <DVFS_MIF_L0>;
+			front_vt1_int = <DVFS_INT_L3>;
+			front_vt1_cam = <DVFS_CAM_L4>;
+			front_vt1_mif = <DVFS_MIF_L3>;
 			front_vt1_i2c = <0>;
 
-			front_vt2_int = <DVFS_INT_L0>;
-			front_vt2_cam = <DVFS_CAM_L0>;
-			front_vt2_mif = <DVFS_MIF_L0>;
+			front_vt2_int = <DVFS_INT_L3>;
+			front_vt2_cam = <DVFS_CAM_L4>;
+			front_vt2_mif = <DVFS_MIF_L3>;
 			front_vt2_i2c = <0>;
 
-			rear_preview_fhd_int = <DVFS_INT_L0>;
+			rear_preview_fhd_int = <DVFS_INT_L3>;
 			rear_preview_fhd_cam = <DVFS_CAM_L0>;
-			rear_preview_fhd_mif = <DVFS_MIF_L0>;
+			rear_preview_fhd_mif = <DVFS_MIF_L2>;
 			rear_preview_fhd_i2c = <0>;
 
 			rear_preview_whd_int = <DVFS_INT_L0>;
@@ -1075,14 +1076,14 @@
 			rear_preview_uhd_mif = <DVFS_MIF_L0>;
 			rear_preview_uhd_i2c = <0>;
 
-			rear_capture_int = <DVFS_INT_L0>;
+			rear_capture_int = <DVFS_INT_L3>;
 			rear_capture_cam = <DVFS_CAM_L0>;
-			rear_capture_mif = <DVFS_MIF_L0>;
+			rear_capture_mif = <DVFS_MIF_L2>;
 			rear_capture_i2c = <0>;
 
-			rear_video_fhd_int = <DVFS_INT_L0>;
+			rear_video_fhd_int = <DVFS_INT_L3>;
 			rear_video_fhd_cam = <DVFS_CAM_L0>;
-			rear_video_fhd_mif = <DVFS_MIF_L0>;
+			rear_video_fhd_mif = <DVFS_MIF_L2>;
 			rear_video_fhd_i2c = <0>;
 
 			rear_video_uhd_int = <DVFS_INT_L0>;
@@ -1090,9 +1091,9 @@
 			rear_video_uhd_mif = <DVFS_MIF_L0>;
 			rear_video_uhd_i2c = <0>;
 
-			rear_video_fhd_capture_int = <DVFS_INT_L0>;
+			rear_video_fhd_capture_int = <DVFS_INT_L3>;
 			rear_video_fhd_capture_cam = <DVFS_CAM_L0>;
-			rear_video_fhd_capture_mif = <DVFS_MIF_L0>;
+			rear_video_fhd_capture_mif = <DVFS_MIF_L2>;
 			rear_video_fhd_capture_i2c = <0>;
 
 			rear_video_uhd_capture_int = <DVFS_INT_L0>;
@@ -1165,11 +1166,32 @@
 
 	dsim_0: dsim@14800000 {
 		lcd_info = <&s6e3fa2>;
+		decon_board = <&decon_board_list>;
 		/* lcd reset, power */
-		gpios = <&gpd1 3 0x1>, <&gpd1 1 0x1>;
-		lcd_vdd = "LCD_3P0";
-		lcd_vdd_2 = "LCD_1P8";
+		/* gpios = <&gpd1 3 0x1>, <&gpd1 1 0x1>; */
+		/* lcd_vdd = "LCD_3P0"; */
+		/* lcd_vdd_2 = "LCD_1P8"; */
 		status = "okay";
+	};
+
+	decon_board_list: decon_board_list {
+		dsim_set_panel_power_enable {
+			type = "regulator,enable", "regulator,enable", "gpio,high", "delay,usleep";
+			gpios = <&gpd1 1 0x1>;
+			delay = <10000 11000>;
+			regulator = "LCD_3P0", "LCD_1P8";
+		};
+		dsim_set_panel_power_disable {
+			type = "gpio,low", "delay,usleep", "gpio,low", "delay,usleep", "regulator,disable", "delay,usleep", "regulator,disable";
+			gpios = <&gpd1 3 0x1>, <&gpd3 1 0x1>;
+			delay = <10000 11000>, <5000 6000>, <5000 6000>;
+			regulator = "LCD_1P8", "LCD_3P0";
+		};
+		dsim_reset_panel {
+			type = "gpio,high", "delay,usleep", "gpio,low", "delay,usleep", "gpio,high", "delay,usleep";
+			gpios = <&gpd1 3 0x1>, <&gpd1 3 0x1>, <&gpd1 3 0x1>;
+			delay = <10000 11000>, <10000 11000>, <10000 11000>;
+		};
 	};
 
 	s6e3fa2: s6e3fa2_fhd {
@@ -1284,6 +1306,7 @@
 		samsung,auxdev = <&s2801x>;
 		gpios = <&gpf1 5 0x1>;
 		submic-bias-gpio = <&gpd2 3 0x1>;
+		samsung,codec-uses-i2scdclk;
 		clocks = <&clock 151>;		 /* sclk_i2s */
 		clock-names = "codec_bclk";
 		pinctrl-names = "default";
@@ -1329,6 +1352,18 @@
 		pinctrl-0 = <&uart_bt_active &uart_bt_output_sleep &uart_bt_input_sleep>;
 		status = "okay";
 	};
+
+	bluetooth {
+		compatible = "broadcom,bcm43xx";
+		gpios = <&gpc4 2 0x1	/*BT_EN*/
+				&gpa2 2 0x1	/*BT_WAKE*/
+				&gpa2 6 0xF	/*BT_HOST_WAKE*/ >;
+		pinctrl-names = "default";
+		pinctrl-0=<&bt_hostwake &bt_btwake &bt_en>;
+		status = "okay";
+	};
+
+
 
 	pinctrl@14CC0000 {
 		uart0_rts: uart0-rts {
@@ -1502,6 +1537,37 @@
 			samsung,pin-con-pdn = <3>;	/* PREV STATE */
 			samsung,pin-pud-pdn = <0>;
 		};
+	};
+
+	sec_thermistor@0 {
+		compatible = "samsung,sec-ap-thermistor";
+		status = "okay";
+
+		adc_array = <289 301 313 324 336 348 360 372 383 395
+				407 423 438 454 470 486 501 517 533 548
+				564 586 607 629 651 673 694 716 738 759
+				781 805 828 852 875 899 930 961 992 1023
+				1054 1087 1120 1154 1187 1220 1255 1289 1324 1358
+				1393 1433 1472 1512 1551 1591 1631 1670 1710 1749
+				1789 1832 1875 1918 1961 2004 2047 2090 2133 2176
+				2219 2264 2309 2355 2400 2445 2490 2535 2581 2626
+				2671 2708 2745 2782 2819 2856 2892 2929 2966 3003
+				3040 3070 3100 3130 3160 3190 3216 3242 3267 3293
+				3319 3341 3363 3384 3406 3428 3446 3463 3481 3498 3516>;
+		temp_array = <900 890 880 870 860 850 840 830 820 810
+					   800 790 780 770 760 750 740 730 720 710
+					   700 690 680 670 660 650 640 630 620 610
+					   600 590 580 570 560 550 540 530 520 510
+					   500 490 480 470 460 450 440 430 420 410
+					   400 390 380 370 360 350 340 330 320 310
+					   300 290 280 270 260 250 240 230 220 210
+					   200 190 180 170 160 150 140 130 120 110
+					   100 90 80 70 60 50 40 30 20 10
+					   0 (-10) (-20) (-30) (-40) (-50) (-60) (-70) (-80) (-90)
+					   (-100) (-110) (-120) (-130) (-140) (-150) (-160) (-170) (-180) (-190) (-200)>;
+		io-channels = <&exynos_adc 0>;
+		io-channel-names = "adc-ap-temp";
+		io-channel-ranges;
 	};
 };
 

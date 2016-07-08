@@ -36,6 +36,8 @@
 #include "modem_utils.h"
 #include "link_device_memory.h"
 #include "link_ctrlmsg_iosm.h"
+#include <linux/modem_notifier.h>
+
 
 #ifdef GROUP_MEM_LINK_COMMAND
 
@@ -78,6 +80,7 @@ static int shmem_reset_ipc_link(struct mem_link_device *mld)
 	}
 
 	atomic_set(&ld->netif_stopped, 0);
+	ld->tx_flowctrl_mask = 0;
 
 	set_magic(mld, MEM_IPC_MAGIC);
 	set_access(mld, 1);
@@ -183,6 +186,9 @@ static void shmem_handle_cp_crash(struct mem_link_device *mld,
 	stop_net_ifaces(ld);
 	purge_txq(mld);
 
+	if (cp_online(mc))
+		modem_notify_event(state);
+
 	if (cp_online(mc) || cp_booting(mc))
 		set_modem_state(mld, state);
 
@@ -224,6 +230,9 @@ static void shmem_forced_cp_crash(struct mem_link_device *mld)
 			ld->name, mc->name, mc_state(mc), CALLER);
 		return;
 	}
+
+	/* Disable debug Snapshot */
+	mif_set_snapshot(false);
 
 	if (mld->attrs & LINK_ATTR(LINK_ATTR_MEM_DUMP)) {
 		stop_net_ifaces(ld);
@@ -380,6 +389,9 @@ static void cmd_crash_exit_handler(struct mem_link_device *mld)
 	struct link_device *ld = &mld->link_dev;
 	struct modem_ctl *mc = ld->mc;
 	unsigned long flags;
+
+	/* Disable debug Snapshot */
+	mif_set_snapshot(false);
 
 	spin_lock_irqsave(&mld->state_lock, flags);
 	mld->state = LINK_STATE_CP_CRASH;
@@ -1538,7 +1550,8 @@ static int shmem_send(struct link_device *ld, struct io_device *iod,
 
 			mif_err("wait TX RESUME CMD...\n");
 			INIT_COMPLETION(ld->raw_tx_resumed);
-			wait_for_completion(&ld->raw_tx_resumed);
+			wait_for_completion_timeout(&ld->raw_tx_resumed,
+				msecs_to_jiffies(3000));
 			mif_err("TX resumed done.\n");
 		}
 
@@ -1696,9 +1709,12 @@ static int shmem_xmit_boot(struct link_device *ld, struct io_device *iod,
 
 	/**
 	 * Check the size of the boot image
+	 * fix the integer overflow of "mf.m_offset + mf.len" from Jose Duart
 	 */
-	if (mf.size > valid_space) {
-		mif_err("%s: ERR! Invalid binary size %d\n", ld->name, mf.size);
+	if (mf.size > valid_space || mf.len > valid_space
+			|| mf.m_offset > valid_space - mf.len) {
+		mif_err("%s: ERR! Invalid args: size %x, offset %x, len %x\n",
+			ld->name, mf.size, mf.m_offset, mf.len);
 		return -EINVAL;
 	}
 
@@ -2051,7 +2067,7 @@ static void shmem_qos_work(struct work_struct *work)
 		pm_qos_update_request(&pm_qos_req_mif,
 				mld->mif_clk_table[level - 1]);
 	} else {
-		mif_err("Unlock CPU(%u)\n", level);
+		mif_err("Unlock MIF(%u)\n", level);
 		pm_qos_update_request(&pm_qos_req_mif, 0);
 	}
 }
@@ -2155,6 +2171,22 @@ static int shmem_rx_setup(struct link_device *ld)
 	return 0;
 }
 
+#if defined(CONFIG_SOC_EXYNOS7580)
+#include <mach/map.h>
+static void check_chipid_with_shmem_size(size_t size)
+{
+	unsigned chipid = __raw_readl(S5P_VA_CHIPID2 + 0xC);
+	bool is_isla = ((chipid & 0x700) == 0x0100);
+	char *chipname = is_isla ? "Exynos7579" : "Exynos7580";
+
+	mif_info("chip-id: 0x%x (%s)\n", chipid, chipname);
+	if (size != (is_isla ? 0x5c00000 : 0x7800000))
+		mif_err("\nWARNNING: CP mem size mismatch, %s(0x%lx)\n\n",
+			chipname, (unsigned long)size);
+}
+#else
+#define check_chipid_with_shmem_size(size)
+#endif
 struct link_device *shmem_create_link_device(struct platform_device *pdev)
 {
 	struct modem_data *modem;
@@ -2331,6 +2363,7 @@ struct link_device *shmem_create_link_device(struct platform_device *pdev)
 	mif_err("boot_start=%lu, boot_size=%lu\n",
 		(unsigned long)mld->boot_start, (unsigned long)mld->boot_size);
 
+	check_chipid_with_shmem_size(mld->shm_size);
 	/**
 	 * Initialize SHMEM maps for IPC (physical map -> logical map)
 	 */

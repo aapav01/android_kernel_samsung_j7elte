@@ -2468,7 +2468,7 @@ static ssize_t r_blocks_count_show(struct ext4_attr *a,
 		struct ext4_sb_info *sbi, char *buf)
 {
 	return snprintf(buf, PAGE_SIZE, "%llu\n",
-		(unsigned long long) atomic64_read(&sbi->s_r_blocks_count));
+			(unsigned long long) atomic64_read(&sbi->s_r_blocks_count));
 }
 
 static ssize_t r_blocks_count_store(struct ext4_attr *a,
@@ -4503,7 +4503,8 @@ static int ext4_commit_super(struct super_block *sb, int sync)
 	ext4_superblock_csum_set(sb);
 	mark_buffer_dirty(sbh);
 	if (sync) {
-		error = sync_dirty_buffer(sbh);
+		error = __sync_dirty_buffer(sbh,
+			test_opt(sb, BARRIER) ? WRITE_FUA : WRITE_SYNC);
 		if (error)
 			return error;
 

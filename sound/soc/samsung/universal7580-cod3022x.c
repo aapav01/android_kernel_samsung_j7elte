@@ -118,6 +118,17 @@ enum {
 struct universal7580_mic_bias {
 	int mode[3];
 	int gpio[3];
+	atomic_t use_count[3];
+};
+
+enum {
+	EX_SPK_BUCK,
+	EX_SPK_AMP_EN,
+	EX_SPK_CONTROL_CNT,
+};
+
+struct universal7580_ext_spk_bias {
+	int gpio[EX_SPK_CONTROL_CNT];
 };
 
 struct cod3022x_machine_priv {
@@ -131,6 +142,8 @@ struct cod3022x_machine_priv {
 	struct universal7580_mic_bias mic_bias;
 	bool use_bt1_for_fm;
 	bool use_i2scdclk_for_codec_bclk;
+	bool use_ext_spk;
+	struct universal7580_ext_spk_bias ext_spk_bias;
 #ifdef CONFIG_PM_DEVFREQ
 	struct pm_qos_request aud_cpu0_qos;
 #endif
@@ -542,6 +555,28 @@ static int universal7580_set_bias_level(struct snd_soc_card *card,
 	return 0;
 }
 
+static int universal7580_ext_gpio_spk_ev(struct snd_soc_card *card,
+				int event)
+{
+	struct cod3022x_machine_priv *priv = snd_soc_card_get_drvdata(card);
+	int i;
+	dev_dbg(card->dev, "%s Called: %d\n", __func__,	event);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		for (i=0; i < EX_SPK_CONTROL_CNT; i++)
+			if (gpio_is_valid(priv->ext_spk_bias.gpio[i]))
+				gpio_set_value(priv->ext_spk_bias.gpio[i], 1);
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		for (i=0; i < EX_SPK_CONTROL_CNT; i++)
+			if (gpio_is_valid(priv->ext_spk_bias.gpio[i]))
+				gpio_set_value(priv->ext_spk_bias.gpio[i], 0);
+		break;
+	}
+	return 0;
+}
+
 static void universal7580_ext_gpio_bias_ev(struct snd_soc_card *card,
 				int event, int gpio)
 {
@@ -576,7 +611,6 @@ static int universal7580_int_bias2_ev(struct snd_soc_card *card,
 	struct cod3022x_machine_priv *priv = snd_soc_card_get_drvdata(card);
 
 	dev_dbg(card->dev, "%s called\n", __func__);
-
 	return cod3022x_mic_bias_ev(priv->codec, COD3022X_MIC2, event);
 }
 
@@ -584,6 +618,39 @@ static int universal7580_configure_mic_bias(struct snd_soc_card *card,
 		int index, int event)
 {
 	struct cod3022x_machine_priv *priv = snd_soc_card_get_drvdata(card);
+	int process_event = 0;
+	int mode_index = priv->mic_bias.mode[index];
+
+	/* validate the bias mode */
+	if ((mode_index < MB_INT_BIAS1) || (mode_index > MB_EXT_GPIO))
+		return 0;
+
+	/* decrement the bias mode index to match use count buffer
+	 * because use count buffer size is 0-2, and the mode is 1-3
+	 * so decrement, and this veriable should be used only for indexing
+	 * use_count.
+	 */
+	mode_index--;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		atomic_inc(&priv->mic_bias.use_count[mode_index]);
+		if (atomic_read(&priv->mic_bias.use_count[mode_index]) == 1)
+			process_event = 1;
+		break;
+
+	case SND_SOC_DAPM_POST_PMD:
+		atomic_dec(&priv->mic_bias.use_count[mode_index]);
+		if (atomic_read(&priv->mic_bias.use_count[mode_index]) == 0)
+			process_event = 1;
+		break;
+
+	default:
+		break;
+	}
+
+	if (!process_event)
+		return 0;
 
 	switch(priv->mic_bias.mode[index]) {
 	case MB_INT_BIAS1:
@@ -599,6 +666,55 @@ static int universal7580_configure_mic_bias(struct snd_soc_card *card,
 	default:
 		break;
 	};
+
+	return 0;
+}
+
+static void universal7580_ex_spk_parse_dt(struct platform_device *pdev, struct
+						cod3022x_machine_priv *priv)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct device *dev = &pdev->dev;
+	int ret;
+	int i;
+	int gpio, gpio_cnt;
+	char gpio_name[32];
+
+	for (i = 0; i < EX_SPK_CONTROL_CNT; i++) {
+		priv->ext_spk_bias.gpio[i] = -EINVAL;
+	}
+
+	for (i = 0, gpio_cnt = 0; i < EX_SPK_CONTROL_CNT; i++) {
+		gpio = of_get_named_gpio(np, "ext-spk-gpios",
+				gpio_cnt++);
+		if (gpio_is_valid(gpio)) {
+			priv->ext_spk_bias.gpio[i] = gpio;
+
+			sprintf(gpio_name, "ext_spk_bias-%d", i);
+
+			ret = devm_gpio_request_one(dev, gpio,
+					GPIOF_OUT_INIT_LOW, gpio_name);
+
+			if (ret < 0) {
+				dev_err(dev, "ext-spk bias GPIO request failed\n");
+				continue;
+			}
+
+			gpio_direction_output(gpio, 0);
+		} else {
+			dev_err(&pdev->dev, "Invalid spk-bias gpio[%d]\n", i);
+		}
+	}
+}
+
+static int universal7580_ext_spk_bias(struct snd_soc_dapm_widget *w,
+				struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_card *card = w->dapm->card;
+	struct cod3022x_machine_priv *priv = card->drvdata;
+
+	if (priv->use_ext_spk)
+		return universal7580_ext_gpio_spk_ev(w->dapm->card, event);
 
 	return 0;
 }
@@ -635,6 +751,11 @@ static void universal7580_parse_dt(struct snd_soc_card *card)
 		priv->use_i2scdclk_for_codec_bclk = true;
 	else
 		priv->use_i2scdclk_for_codec_bclk = false;
+
+	if (of_find_property(dev->of_node, "samsung,uses-ext-spk", NULL))
+		priv->use_ext_spk = true;
+	else
+		priv->use_ext_spk = false;
 }
 
 static int universal7580_request_ext_mic_bias_en_gpio(struct snd_soc_card *card)
@@ -681,6 +802,9 @@ static int universal7580_jack_detect_dev_select(struct snd_soc_card *card)
 					NULL) != NULL) {
 		priv->use_external_jd = true;
 		cod3022x_set_externel_jd(priv->codec);
+#ifdef CONFIG_SAMSUNG_JACK
+		sec_jack_register_button_notify_cb(&cod3022x_process_button_ev);
+#endif
 	} else {
 		priv->use_external_jd = false;
 	}
@@ -715,6 +839,7 @@ static int universal7580_enable_codec_bclk(struct snd_soc_card *card)
 {
 	struct device *dev = card->dev;
 	struct cod3022x_machine_priv *priv = snd_soc_card_get_drvdata(card);
+	struct snd_soc_dai *cpu_dai = card->rtd[0].cpu_dai;
 	int ret;
 
 	priv->bclk_codec = clk_get(dev, "codec_bclk");
@@ -727,6 +852,17 @@ static int universal7580_enable_codec_bclk(struct snd_soc_card *card)
 	if (ret < 0) {
 		dev_err(dev, "clk enable failed for codec bclk\n");
 		clk_put(priv->bclk_codec);
+		return ret;
+	}
+
+	pm_runtime_get_sync(cpu_dai->dev);
+	/* setting as interface 2, to ensure PSR is set */
+	ret = universal7580_configure_cpu_dai(card, cpu_dai,
+				COD3022X_RFS_48KHZ, COD3022X_BFS_48KHZ, 2);
+	pm_runtime_put_sync(cpu_dai->dev);
+
+	if (ret) {
+		dev_err(dev, "Failed to configure cpu dai for codec clk\n");
 		return ret;
 	}
 
@@ -787,6 +923,7 @@ static int universal7580_init_soundcard(struct snd_soc_card *card)
 static int universal7580_late_probe(struct snd_soc_card *card)
 {
 
+	snd_soc_dapm_ignore_suspend(&card->dapm, "SPK Bias");
 	return 0;
 }
 
@@ -805,6 +942,7 @@ const struct snd_soc_dapm_widget universal7580_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("MIC1 Bias", universal7580_mic1_bias),
 	SND_SOC_DAPM_MIC("MIC2 Bias", universal7580_mic2_bias),
 	SND_SOC_DAPM_MIC("LINEIN Bias", universal7580_linein_bias),
+	SND_SOC_DAPM_SPK("SPK Bias", universal7580_ext_spk_bias),
 };
 
 const struct snd_soc_dapm_route universal7580_dapm_routes[] = {
@@ -816,6 +954,8 @@ const struct snd_soc_dapm_route universal7580_dapm_routes[] = {
 
 	{"LINEIN_PGA", NULL, "LINEIN Bias"},
 	{"LINEIN Bias", NULL, "IN3L" },
+
+	{"SPK Bias", NULL, "SPKOUTLN" },
 };
 
 static struct snd_soc_ops universal7580_aif1_ops = {
@@ -1018,6 +1158,7 @@ static void universal7580_mic_bias_parse_dt(struct platform_device *pdev, struct
 	for (i = 0; i < 3; i++) {
 		priv->mic_bias.mode[i] = MB_NONE;
 		priv->mic_bias.gpio[i] = -EINVAL;
+		atomic_set(&priv->mic_bias.use_count[i], 0);
 	}
 
 	ret = of_property_read_u32_array(np, "mic-bias-mode",
@@ -1117,7 +1258,6 @@ static int universal7580_audio_probe(struct platform_device *pdev)
 		s2801x_codec_conf[n].of_node = auxdev_np;
 	}
 
-
 	snd_soc_card_set_drvdata(card, priv);
 
 	universal7580_mic_bias_parse_dt(pdev, priv);
@@ -1129,6 +1269,8 @@ static int universal7580_audio_probe(struct platform_device *pdev)
 
 	universal7580_init_soundcard(card);
 
+	if (priv->use_ext_spk)
+		universal7580_ex_spk_parse_dt(pdev, priv);
 #ifdef CONFIG_SAMSUNG_JACK
 	jack_adc = iio_channel_get_all(&pdev->dev);
 	jack_controls.get_adc = get_adc_value;

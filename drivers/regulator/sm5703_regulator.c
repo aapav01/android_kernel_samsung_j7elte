@@ -370,7 +370,7 @@ static int sm5703_regulator_is_enabled(struct regulator_dev *rdev)
 		return ret;
 
 	ret = (ret & (info->enable_bit))?1:0;
-	pr_info("%s %s %s ret (%d)", ALIAS_NAME, rdev->desc->name, __func__, ret);
+	pr_info("%s %s %s ret (%d)\n", ALIAS_NAME, rdev->desc->name, __func__, ret);
 	return ret;
 }
 

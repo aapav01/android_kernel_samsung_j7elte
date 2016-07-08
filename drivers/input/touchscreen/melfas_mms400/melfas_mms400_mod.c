@@ -19,42 +19,51 @@ static bool ta_connected = 0;
  */
 int mms_power_control(struct mms_ts_info *info, int enable)
 {
-	int ret;
+	int ret = 0;
 	struct i2c_client *client = info->client;
 	struct regulator *regulator_dvdd;
 	struct regulator *regulator_avdd;
 	struct pinctrl_state *pinctrl_state;
+	static bool on;
 
 	tsp_debug_info(true, &info->client->dev, "%s [START %s] \n",
 			__func__, enable? "on":"off");
 
+	if (on == enable) {
+		tsp_debug_err(true, &client->dev, "%s : TSP power already %s\n",
+			__func__,(on)?"on":"off");
+		return ret;
+	}
+
 	if (info->dtdata->gpio_io_en) {
 		regulator_dvdd = regulator_get(NULL, info->dtdata->gpio_io_en);
 		if (IS_ERR(regulator_dvdd)) {
-			tsp_debug_info(true, &client->dev,"%s: Failed to get %s regulator.\n",
+				tsp_debug_err(true, &client->dev,"%s: Failed to get %s regulator.\n",
 				 __func__, info->dtdata->gpio_io_en);
-			return PTR_ERR(regulator_dvdd);
+			ret = PTR_ERR(regulator_dvdd);
+			goto out;
 		}
 	}
 
 	regulator_avdd = regulator_get(NULL, info->dtdata->gpio_vdd_en);
 	if (IS_ERR(regulator_avdd)) {
-		tsp_debug_info(true, &client->dev,"%s: Failed to get %s regulator.\n",
+		tsp_debug_err(true, &client->dev,"%s: Failed to get %s regulator.\n",
 			 __func__, info->dtdata->gpio_vdd_en);
-		return PTR_ERR(regulator_avdd);
+		ret = PTR_ERR(regulator_avdd);
+		goto out;
 	}
 
 	if (enable) {
 		ret = regulator_enable(regulator_avdd);
 		if (ret) {
-			tsp_debug_info(true, &client->dev,"%s: Failed to enable avdd: %d\n", __func__, ret);
-			return ret;
+			tsp_debug_err(true, &client->dev, "%s: Failed to enable avdd: %d\n", __func__, ret);
+			goto out;
 		}
 		if (info->dtdata->gpio_io_en) {
 			ret = regulator_enable(regulator_dvdd);
 			if (ret) {
-				tsp_debug_info(true, &client->dev,"%s: Failed to enable vdd: %d\n", __func__, ret);
-				return ret;
+					tsp_debug_err(true, &client->dev,"%s: Failed to enable vdd: %d\n", __func__, ret);
+				goto out;
 			}
 		}
 		pinctrl_state = pinctrl_lookup_state(info->pinctrl, "on_state");
@@ -70,13 +79,15 @@ int mms_power_control(struct mms_ts_info *info, int enable)
 	}
 
 	if (IS_ERR(pinctrl_state)) {
-		tsp_debug_info(true, &client->dev,"%s: Failed to lookup pinctrl.\n", __func__);
+		tsp_debug_err(true, &client->dev,"%s: Failed to lookup pinctrl.\n", __func__);
 	} else {
 		ret = pinctrl_select_state(info->pinctrl, pinctrl_state);
 		if (ret)
-			tsp_debug_info(true, &client->dev, "%s: Failed to configure pinctrl.\n", __func__);
+			tsp_debug_err(true, &client->dev, "%s: Failed to configure pinctrl.\n", __func__);
 	}
 
+	on = enable;
+out:
 	if (info->dtdata->gpio_io_en) {
 		regulator_put(regulator_dvdd);
 	}
@@ -89,7 +100,7 @@ int mms_power_control(struct mms_ts_info *info, int enable)
 
 	tsp_debug_info(true, &info->client->dev, "%s [DONE %s] \n",
 			__func__, enable? "on":"off");
-	return 0;
+	return ret;
 }
 
 /**
@@ -111,11 +122,6 @@ void mms_clear_input(struct mms_ts_info *info)
 	info->touch_count = 0;
 
 	input_sync(info->input_dev);
-
-#if defined (CONFIG_INPUT_BOOSTER)
-	input_booster_send_event(BOOSTER_DEVICE_TOUCH, BOOSTER_MODE_FORCE_OFF);
-#endif
-
 	return;
 }
 
@@ -137,7 +143,11 @@ void mms_input_event_handler(struct mms_ts_info *info, u8 sz, u8 *buf)
 		int x = tmp[2] | ((tmp[1] & 0xf) << 8);
 		int y = tmp[3] | (((tmp[1] >> 4) & 0xf) << 8);
 		int pressure = tmp[4];
+		//int size = tmp[5];		// sumsize
 		int touch_major = tmp[6];
+		int touch_minor = tmp[7];
+
+		int palm = (tmp[0] & MIP_EVENT_INPUT_PALM) >> 4;
 
 		// Report input data
 #if MMS_USE_TOUCHKEY
@@ -194,10 +204,7 @@ void mms_input_event_handler(struct mms_ts_info *info, u8 sz, u8 *buf)
 						id, info->boot_ver_ic, info->core_ver_ic,
 						info->config_ver_ic, info->touch_count);
 				}
-#if defined (CONFIG_INPUT_BOOSTER)
-				if (!info->touch_count)
-					input_booster_send_event(BOOSTER_DEVICE_TOUCH, BOOSTER_MODE_OFF);
-#endif
+
 				continue;
 			}
 
@@ -215,21 +222,20 @@ void mms_input_event_handler(struct mms_ts_info *info, u8 sz, u8 *buf)
 				input_report_abs(info->input_dev, ABS_MT_PRESSURE, 1);
 #endif
 			input_report_abs(info->input_dev, ABS_MT_TOUCH_MAJOR, touch_major);
+			input_report_abs(info->input_dev, ABS_MT_TOUCH_MINOR, touch_minor);
+			input_report_abs(info->input_dev, ABS_MT_PALM, palm);
 
 			if (info->finger_state[id] == 0){
 				info->finger_state[id] = 1;
 				info->touch_count++;
 #ifdef CONFIG_SAMSUNG_PRODUCT_SHIP
 				tsp_debug_info(true, &client->dev,
-					"P[%d] p:%d m:%d tc:%d\n",
-					id, pressure, touch_major, info->touch_count);
+					"P[%d] z:%d p:%d m:%d,%d tc:%d\n",
+					id, pressure, palm, touch_major, touch_minor, info->touch_count);
 #else
 				tsp_debug_err(true, &client->dev,
-					"P[%d] (%d, %d) p:%d m:%d tc:%d\n",
-					id, x, y, pressure, touch_major, info->touch_count);
-#endif
-#if defined (CONFIG_INPUT_BOOSTER)
-				input_booster_send_event(BOOSTER_DEVICE_TOUCH, BOOSTER_MODE_ON);
+					"P[%d] (%d, %d) z:%d p:%d m:%d,%d tc:%d\n",
+					id, x, y, pressure, palm, touch_major, touch_minor, info->touch_count);
 #endif
 			}
 		}
@@ -320,6 +326,8 @@ void mms_config_input(struct mms_ts_info *info)
 	input_set_abs_params(input_dev, ABS_MT_PRESSURE, 0, INPUT_PRESSURE_MAX, 0, 0);
 #endif
 	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, 0, INPUT_TOUCH_MAJOR_MAX, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_TOUCH_MINOR, 0, INPUT_TOUCH_MINOR_MAX, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_PALM, 0, 1, 0, 0);
 
 	//Key
 	set_bit(EV_KEY, input_dev->evbit);

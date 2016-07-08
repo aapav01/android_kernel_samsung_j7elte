@@ -126,7 +126,7 @@ static void sec_vib_work(struct work_struct *work)
 #if defined(CONFIG_OF)
 static struct sec_vib_pdata *sec_vib_get_dt(struct device *dev)
 {
-	struct device_node *node, *child_node = NULL;
+	struct device_node *node, *child_node;
 	struct sec_vib_pdata *pdata;
 	int ret = 0;
 
@@ -184,14 +184,14 @@ static int sec_vib_probe(struct platform_device *pdev)
 	ddata = kzalloc(sizeof(struct sec_vib_drvdata), GFP_KERNEL);
 	if (!ddata) {
 		ret = -ENOMEM;
-		goto err_free;
+		goto err_out;
 	}
 
 	ddata->regulator = regulator_get(NULL, pdata->regulator);
 	if (IS_ERR(ddata->regulator)) {
 		printk(KERN_ERR "[VIB] failed get %s\n", pdata->regulator);
 		ret = PTR_ERR(ddata->regulator);
-		goto err_free;
+		goto err_out;
 	}
 
 	hrtimer_init(&ddata->timer, CLOCK_MONOTONIC,
@@ -211,15 +211,15 @@ static int sec_vib_probe(struct platform_device *pdev)
 
 	ret = timed_output_dev_register(&ddata->dev);
 	if (ret < 0)
-		goto err_free;
+		goto err_out;
 
 	platform_set_drvdata(pdev, ddata);
 
 	return 0;
 
-err_free:
-	kfree(ddata);
 err_out:
+	kfree(ddata);
+
 	return ret;
 }
 

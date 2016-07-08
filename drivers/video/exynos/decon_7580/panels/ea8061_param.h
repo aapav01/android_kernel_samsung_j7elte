@@ -4,6 +4,12 @@
 #include <linux/types.h>
 #include <linux/kernel.h>
 
+struct lcd_seq_info {
+	unsigned char	*cmd;
+	unsigned int	len;
+	unsigned int	sleep;
+};
+
 #define EA8061_READ_TX_REG			0xFD
 #define EA8061_READ_RX_REG			0xFE
 #define EA8061_ID_REG				0xD1
@@ -31,26 +37,28 @@ enum {
 #define LEVEL_IS_HBM(level)			(level >= 6)
 #define LEVEL_IS_CAPS_OFF(level)	(level <= 19)
 #define UNDER_MINUS_20(temperature)	(temperature <= -20)
-#define ACL_IS_ON(nit) 				(nit < 350)
+#define ACL_IS_ON(nit)			(nit < 350)
 
 #define NORMAL_TEMPERATURE			25	/* 25 degrees Celsius */
-#define UI_MAX_BRIGHTNESS 	255
-#define UI_MIN_BRIGHTNESS 	0
-#define UI_DEFAULT_BRIGHTNESS 134
+#define UI_MAX_BRIGHTNESS	255
+#define UI_MIN_BRIGHTNESS	0
+#define UI_DEFAULT_BRIGHTNESS	134
 
-#define EA8061_MTP_ADDR 			0xDA
-#define EA8061_MTP_SIZE 			32
+#define EA8061_MTP_ADDR				0xDA
+#define EA8061_MTP_SIZE				32
 
-#define EA8061_MTP_DB_ADDR 			0xDB
-#define EA8061_MTP_DB_SIZE 			56
+#define EA8061_MTP_DB_ADDR			0xDB
+#define EA8061_MTP_DB_SIZE			56
 
-#define EA8061_MTP_B2_ADDR 			0xB2
-#define EA8061_MTP_B2_SIZE 			7
+#define EA8061_MTP_B2_ADDR			0xB2
+#define EA8061_MTP_B2_SIZE			7
 
-#define EA8061_MTP_D4_ADDR 			0xD4
-#define EA8061_MTP_D4_SIZE 			18
+#define EA8061_MTP_D4_ADDR			0xD4
+#define EA8061_MTP_D4_SIZE			18
 
-#define EA8061_MTP_DATE_SIZE 		EA8061_MTP_SIZE
+#define EA8061_DATE_SIZE			2
+
+#define EA8061_MTP_DATE_SIZE		EA8061_MTP_SIZE
 #define EA8061_COORDINATE_REG		0xA1
 #define EA8061_COORDINATE_LEN		4
 #define EA8061_HBMGAMMA_REG		0xB4
@@ -69,6 +77,56 @@ enum {
 #define ELVSS_CMD_CNT		3
 
 /* EA8061 */
+static const unsigned char SEQ_TEST_KEY_ON_F0[] = {
+	0xF0,
+	0x5A, 0x5A,
+};
+
+static const unsigned char SEQ_TEST_KEY_OFF_F0[] = {
+	0xF0,
+	0xA5, 0xA5,
+};
+
+static const unsigned char SEQ_TEST_KEY_ON_F1[] = {
+	0xF1,
+	0x5A, 0x5A,
+};
+
+static const unsigned char SEQ_TEST_KEY_OFF_F1[] = {
+	0xF1,
+	0xA5, 0xA5,
+};
+
+static const unsigned char SEQ_TEST_KEY_ON_FC[] = {
+	0xFC,
+	0x5A, 0x5A,
+};
+
+static const unsigned char SEQ_TEST_KEY_OFF_FC[] = {
+	0xFC,
+	0xA5, 0xA5,
+};
+
+static const unsigned char SEQ_DISPLAY_ON[] = {
+	0x29,
+	0x00, 0x00
+};
+
+static const unsigned char SEQ_DISPLAY_OFF[] = {
+	0x28,
+	0x00,  0x00
+};
+
+static const unsigned char SEQ_SLEEP_IN[] = {
+	0x10,
+	0x00, 0x00
+};
+
+static const unsigned char SEQ_SLEEP_OUT[] = {
+	0x11,
+	0x00, 0x00
+};
+
 static const unsigned char SEQ_EA8061_LTPS_STOP[] = {
 	0xF7,
 	0x5A, 0x5A

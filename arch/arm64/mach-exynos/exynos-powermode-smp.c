@@ -14,6 +14,12 @@
 #include <linux/sysfs.h>
 #include <linux/stat.h>
 
+#if defined(CONFIG_MUIC_NOTIFIER)
+#include <linux/device.h>
+#include <linux/muic/muic.h>
+#include <linux/muic/muic_notifier.h>
+#endif
+
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
 #include <asm/topology.h>
@@ -164,9 +170,26 @@ static void set_lpc_flag(void)
 	__raw_writel(0x1, LPC_FLAG_ADDR);
 }
 
+#if defined(CONFIG_MUIC_NOTIFIER)
+static bool jig_is_attached;
+
+static inline bool is_jig_attached(void)
+{
+	return jig_is_attached;
+}
+#else
+static inline bool is_jig_attached(void)
+{
+	return false;
+}
+#endif
+
 bool is_lpc_available(unsigned int target_residency)
 {
 	if (!lpc_enabled)
+		return false;
+
+	if (is_jig_attached())
 		return false;
 
 	if (is_busy(target_residency, cpu_online_mask))
@@ -485,3 +508,40 @@ int __init exynos_powermode_init(void)
 	return 0;
 }
 arch_initcall(exynos_powermode_init);
+
+#if defined(CONFIG_MUIC_NOTIFIER)
+struct notifier_block cpuidle_muic_nb;
+
+static int exynos_cpuidle_muic_notifier(struct notifier_block *nb,
+				unsigned long action, void *data)
+{
+	muic_attached_dev_t attached_dev = *(muic_attached_dev_t *)data;
+
+	switch (attached_dev) {
+	case ATTACHED_DEV_JIG_UART_OFF_MUIC:	// 523k
+	case ATTACHED_DEV_JIG_UART_OFF_VB_MUIC:
+	case ATTACHED_DEV_JIG_UART_OFF_VB_OTG_MUIC:
+	case ATTACHED_DEV_JIG_UART_OFF_VB_FG_MUIC:
+		if (action == MUIC_NOTIFY_CMD_DETACH)
+			jig_is_attached = false;
+		else if (action == MUIC_NOTIFY_CMD_ATTACH)
+			jig_is_attached = true;
+		else
+			pr_err("%s: ACTION Error!\n", __func__);
+		break;
+	default:
+		break;
+	}
+
+	pr_info("%s: dev=%d, action=%lu\n", __func__, attached_dev, action);
+
+	return NOTIFY_DONE;
+}
+
+static int __init exynos_powermode_muic_notifier_init(void)
+{
+	return muic_notifier_register(&cpuidle_muic_nb,
+			exynos_cpuidle_muic_notifier, MUIC_NOTIFY_DEV_CPUIDLE);
+}
+late_initcall(exynos_powermode_muic_notifier_init);
+#endif

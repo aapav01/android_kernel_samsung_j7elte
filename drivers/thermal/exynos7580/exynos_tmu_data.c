@@ -556,23 +556,23 @@ static const struct exynos_tmu_registers exynos7580_tmu_registers = {
 		.temp_level = 81, \
 	}, \
 	.freq_tab[2] = { \
-		.freq_clip_max = 1500 * 1000, \
+		.freq_clip_max = 1400 * 1000, \
 		.temp_level = 86, \
 	}, \
 	.freq_tab[3] = { \
-		.freq_clip_max = 1400 * 1000, \
+		.freq_clip_max = 1200 * 1000, \
 		.temp_level = 91, \
 	}, \
 	.freq_tab[4] = { \
-		.freq_clip_max = 1200 * 1000, \
+		.freq_clip_max = 800 * 1000, \
 		.temp_level = 96, \
 	}, \
 	.freq_tab[5] = { \
-		.freq_clip_max = 1000 * 1000, \
+		.freq_clip_max = 400 * 1000, \
 		.temp_level = 101, \
 	}, \
 	.freq_tab[6] = { \
-		.freq_clip_max = 800 * 1000, \
+		.freq_clip_max = 400 * 1000, \
 		.temp_level = 106, \
 	}, \
 	.freq_tab_count = 7, \

@@ -97,6 +97,9 @@
 #define TC300K_CMD_FAC_ON		0x50
 #define TC300K_CMD_FAC_OFF		0x60
 #define TC300K_CMD_CAL_CHECKSUM	0x70
+#define TC300K_CMD_FLIP_ON		0xB0
+#define TC300K_CMD_FLIP_OFF	0xC0
+
 #define TC300K_CMD_DELAY		50
 
 /* connecter check */
@@ -227,7 +230,7 @@ struct tc300k_data {
 	bool glove_mode;
 	bool factory_mode;
 	bool led_on;
-
+	bool flip_mode;
 	int key_num;
 	struct tsk_event_val *tsk_ev_val;
 
@@ -450,7 +453,7 @@ int tc300k_touchkey_power(bool on)
 	int ret = 0;
 
 	if (tc300k_power_enabled == on)
-		return 0;
+		return ret;
 
 	printk(KERN_DEBUG "[TK] %s %s\n",
 		__func__, on ? "on" : "off");
@@ -458,42 +461,37 @@ int tc300k_touchkey_power(bool on)
 	regulator = regulator_get(NULL, regulator_ic);
 	if (IS_ERR(regulator)){
 		pr_err("[TK] %s: regulator_ic get failed\n", __func__);
-		return -EIO;
+		ret = -EIO;
+		goto out;
 	}
 	if (on) {
 		ret = regulator_enable(regulator);
 		if (ret) {
 			pr_err("[TK] %s: regulator_ic enable failed\n", __func__);
-			return ret;
+			goto out;
 		}
 	} else {
-		if (regulator_is_enabled(regulator)){
+		if (regulator_is_enabled(regulator))
 			regulator_disable(regulator);
-			if (ret) {
-				pr_err("[TK] %s: regulator_ic disable failed\n", __func__);
-				return ret;
-			}
-		}
-		else
-			regulator_force_disable(regulator);
 	}
-	regulator_put(regulator);
 
 	tc300k_power_enabled = on;
 
-	return 0;
+out:
+	regulator_put(regulator);
+	return ret;
 }
 
 int tc300k_touchkey_led_control(bool on)
 {
 	struct regulator *regulator;
-	int ret=0;
+	int ret = 0;
 
 	if (tc300k_keyled_enabled == on)
-		return 0;
+		return ret;
 
 	if (!regulator_led)
-		return 0;
+		return ret;
 
 	printk(KERN_DEBUG "[TK] %s %s\n",
 		__func__, on ? "on" : "off");
@@ -501,28 +499,24 @@ int tc300k_touchkey_led_control(bool on)
 	regulator = regulator_get(NULL, regulator_led);
 	if (IS_ERR(regulator)){
 		pr_err("[TK] %s: regulator_led get failed\n", __func__);
-		return -EIO;
+		ret = -EIO;
+		goto out;
 	}
 	if (on) {
 		ret = regulator_enable(regulator);
 		if (ret) {
 			pr_err("[TK] %s: regulator_led enable failed\n", __func__);
-			return ret;
+			goto out;
 		}
 	} else {
 		if (regulator_is_enabled(regulator))
-			ret = regulator_disable(regulator);
-			if (ret) {
-				pr_err("[TK] %s: regulator_led disable failed\n", __func__);
-				return ret;
-			}
-			else
-				regulator_force_disable(regulator);
-		}
-	regulator_put(regulator);
+			regulator_disable(regulator);
+	}
 
 	tc300k_keyled_enabled = on;
 
+out:
+	regulator_put(regulator);
 	return 0;
 }
 
@@ -638,9 +632,6 @@ static ssize_t tc300k_led_control(struct device *dev,
 	int scan_buffer;
 	int ret;
 	u8 cmd;
-
-	if (!regulator_led)
-		return count;
 
 	ret = sscanf(buf, "%d", &scan_buffer);
 	if (ret != 1) {
@@ -983,7 +974,7 @@ static int tc300k_verify_fw(struct tc300k_data *data)
 		data->fw_img->fw_len, data->fw_img->fw_len);
 	while (addr < data->fw_img->fw_len) {
 		if ((addr % 0x40) == 0)
-			dev_info(&client->dev, "[TK] fw verify addr = %#x\n", addr);
+			dev_dbg(&client->dev, "[TK] fw verify addr = %#x\n", addr);
 
 		send_9bit(data, TC300K_PRDATA);
 		udelay(2);
@@ -1615,7 +1606,7 @@ static int read_tc350k_register_data(struct tc300k_data *data, int read_key_num,
 	}
 	value = (buff[TC350K_DATA_H_OFFSET] << 8) | buff[TC350K_DATA_L_OFFSET];
 
-	dev_info(&client->dev, "[TK] %s : read key num/offset = [0x%X/0x%X], value : [%d]\n",
+	dev_dbg(&client->dev, "[TK] %s : read key num/offset = [0x%X/0x%X], value : [%d]\n",
 								__func__, read_key_num, read_offset, value);
 
 exit:
@@ -2013,6 +2004,12 @@ static ssize_t tc300k_glove_mode(struct device *dev,
 		return count;
 	}
 
+	if (data->flip_mode) {
+		dev_info(&client->dev, "%s skip glove mode %d by flip enable", __func__, scan_buffer);
+		data->glove_mode = (bool)scan_buffer;
+		return count;
+	}
+
 	ret = tc300k_glove_mode_enable(client, cmd);
 	if (ret < 0)
 		dev_err(&client->dev, "[TK] %s fail(%d)\n", __func__, ret);
@@ -2027,6 +2024,62 @@ static ssize_t tc300k_glove_mode_show(struct device *dev,
 	struct tc300k_data *data = dev_get_drvdata(dev);
 
 	return sprintf(buf, "%d\n", data->glove_mode);
+}
+
+static ssize_t tc300k_flip_mode(struct device *dev,
+	 struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct tc300k_data *data = dev_get_drvdata(dev);
+	struct i2c_client *client = data->client;
+	int scan_buffer;
+	int ret;
+	u8 cmd;
+
+	ret = sscanf(buf, "%d", &scan_buffer);
+	if (ret != 1) {
+		dev_err(&client->dev, "[TK] %s: cmd read err\n", __func__);
+		return count;
+	}
+	if (!(scan_buffer == 0 || scan_buffer == 1)) {
+		dev_err(&client->dev, "[TK] %s: wrong command(%d)\n",
+			__func__, scan_buffer);
+		return count;
+	}
+	if (data->flip_mode == (bool)scan_buffer) {
+		dev_info(&client->dev, "[TK] %s same command(%d)\n",
+			__func__, scan_buffer);
+		return count;
+	}
+
+	if (scan_buffer == 1) {
+		dev_notice(&client->dev, "[TK] flip mode\n");
+		cmd = TC300K_CMD_FLIP_ON;
+	} else {
+		dev_notice(&client->dev, "[TK] normal mode\n");
+		cmd = TC300K_CMD_FLIP_OFF;
+
+	}
+	if ((!data->enabled) || data->fw_downloding) {
+		dev_err(&client->dev, "[TK] can't excute %s\n", __func__);
+		data->flip_mode = (bool)scan_buffer;
+		return count;
+	}
+
+	if (!data->flip_mode){
+		if (data->glove_mode)
+			tc300k_glove_mode_enable(client, TC300K_CMD_GLOVE_ON);
+		else
+			tc300k_glove_mode_enable(client, TC300K_CMD_GLOVE_OFF);
+	}
+
+	ret = i2c_smbus_write_byte_data(client, TC300K_CMD_ADDR, cmd);
+	msleep(TC300K_CMD_DELAY);
+
+	if (ret < 0)
+		dev_err(&client->dev, "[TK] %s fail(%d)\n", __func__, ret);
+	data->flip_mode = (bool)scan_buffer;
+
+	return count;
 }
 
 static ssize_t tc300k_modecheck_show(struct device *dev,
@@ -2109,6 +2162,9 @@ static DEVICE_ATTR(touchkey_factory_mode, S_IRUGO | S_IWUSR | S_IWGRP,
 		tc300k_factory_mode_show, tc300k_factory_mode);
 static DEVICE_ATTR(glove_mode, S_IRUGO | S_IWUSR | S_IWGRP,
 		tc300k_glove_mode_show, tc300k_glove_mode);
+static DEVICE_ATTR(flip_mode, S_IRUGO | S_IWUSR | S_IWGRP,
+		NULL, tc300k_flip_mode);
+
 static DEVICE_ATTR(modecheck, S_IRUGO, tc300k_modecheck_show, NULL);
 
 static struct attribute *sec_touchkey_attributes[] = {
@@ -2174,6 +2230,8 @@ static struct attribute *sec_touchkey_attributes_350k[] = {
 	&dev_attr_touchkey_recent_idac.attr,
 	&dev_attr_touchkey_back_idac.attr,
 	&dev_attr_touchkey_threshold.attr,
+	&dev_attr_glove_mode.attr,
+	&dev_attr_flip_mode.attr,
 
 	&dev_attr_touchkey_factory_mode.attr,
 	&dev_attr_modecheck.attr,
@@ -2626,6 +2684,14 @@ static int tc300k_resume(struct device *dev)
 		ret = tc300k_glove_mode_enable(client, TC300K_CMD_GLOVE_ON);
 		if (ret < 0)
 			dev_err(&client->dev, "[TK] %s glovemode fail(%d)\n", __func__, ret);
+	}
+
+	if (data->flip_mode) {
+		ret = i2c_smbus_write_byte_data(client, TC300K_CMD_ADDR, TC300K_CMD_FLIP_ON);
+		msleep(TC300K_CMD_DELAY);
+
+		if (ret < 0)
+			dev_err(&client->dev, "[TK] %s flipmode fail(%d)\n", __func__, ret);
 	}
 
 	if (data->factory_mode) {
